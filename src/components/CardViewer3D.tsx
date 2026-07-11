@@ -15,6 +15,12 @@ import {
   createCardTextureCanvases,
   type CardTextureCanvases,
 } from '../lib/cardTexture';
+import {
+  CARD_RELIEF_FRAGMENT_SHADER,
+  CARD_RELIEF_VERTEX_SHADER,
+  resolveReliefStrength,
+  resolveReliefViewShift,
+} from '../lib/cardRelief';
 
 const EXPORT_WIDTH = 1600;
 const EXPORT_HEIGHT = 1000;
@@ -166,14 +172,38 @@ async function exportFallbackCanvas(
   return canvasToBlob(output);
 }
 
+function TextureFaceCanvas({ source }: { source: HTMLCanvasElement }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const context = canvas?.getContext('2d');
+    if (!canvas || !context) return;
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(source, 0, 0);
+  }, [source]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      width={source.width}
+      height={source.height}
+      className="h-full w-full"
+      aria-hidden="true"
+    />
+  );
+}
+
 function FallbackCard({
   champion,
   skin,
   view,
+  textures,
 }: {
   champion: ChampionCard;
   skin: SkinEdition;
   view: ViewState;
+  textures?: CardTextureCanvases;
 }) {
   const abilities = [champion.passive, ...champion.spells].slice(0, 5);
   const transform = `perspective(1100px) rotateX(${view.targetTiltX}rad) rotateY(${
@@ -194,69 +224,83 @@ function FallbackCard({
           className="absolute inset-0 overflow-hidden rounded-[1.35rem] border-[3px] border-[#d9bd78] bg-[#07131f] shadow-2xl ring-[10px] ring-[#17303b]"
           style={faceStyle}
         >
-          <img
-            key={skin.splashUrl}
-            className="h-full w-full object-cover"
-            src={skin.splashUrl}
-            alt=""
-            draggable={false}
-            crossOrigin="anonymous"
-            onError={(event) => {
-              const image = event.currentTarget;
-              if (image.dataset.fallback === 'true') return;
-              image.dataset.fallback = 'true';
-              image.src = skin.loadingUrl;
-            }}
-          />
-          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#020912] via-[#020912dd] to-transparent px-5 pb-7 pt-24 text-center">
-            <p className="font-serif text-3xl font-bold text-[#f5e8bd]">{champion.title}</p>
-            <p className="mt-1 text-xs tracking-[.28em] text-[#d7dedb]">{champion.name}</p>
-            <p className="mt-4 border-t border-[#d9bd7866] pt-3 text-sm text-[#f4ead7]">
-              {skin.isBase ? '经典造型' : skin.name}
-            </p>
-          </div>
+          {textures ? (
+            <TextureFaceCanvas source={textures.front} />
+          ) : (
+            <>
+              <img
+                key={skin.loadingUrl}
+                className="h-full w-full object-cover"
+                src={skin.loadingUrl}
+                alt=""
+                draggable={false}
+                crossOrigin="anonymous"
+                onError={(event) => {
+                  const image = event.currentTarget;
+                  if (image.dataset.fallback === 'true') return;
+                  image.dataset.fallback = 'true';
+                  image.src = skin.splashUrl;
+                }}
+              />
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#020912] via-[#020912dd] to-transparent px-5 pb-7 pt-24 text-center">
+                <p className="font-serif text-3xl font-bold text-[#f5e8bd]">{champion.title}</p>
+                <p className="mt-1 text-xs tracking-[.28em] text-[#d7dedb]">{champion.name}</p>
+                <p className="mt-4 border-t border-[#d9bd7866] pt-3 text-sm text-[#f4ead7]">
+                  {skin.isBase ? '经典造型' : skin.name}
+                </p>
+              </div>
+            </>
+          )}
         </div>
 
         <div
-          className="absolute inset-0 flex flex-col overflow-hidden rounded-[1.35rem] border-[3px] border-[#d9bd78] bg-[linear-gradient(145deg,#0d2936,#06101b_55%,#12303e)] px-6 py-8 text-center shadow-2xl ring-[10px] ring-[#17303b] [transform:rotateY(180deg)]"
+          className={`absolute inset-0 overflow-hidden rounded-[1.35rem] border-[3px] border-[#d9bd78] bg-[linear-gradient(145deg,#0d2936,#06101b_55%,#12303e)] shadow-2xl ring-[10px] ring-[#17303b] [transform:rotateY(180deg)] ${
+            textures ? '' : 'flex flex-col px-6 py-8 text-center'
+          }`}
           style={faceStyle}
         >
-          <p className="text-[10px] tracking-[.36em] text-[#64e6dd]">CHAMPION DOSSIER</p>
-          <h3 className="mt-3 font-serif text-3xl font-bold text-[#f5e8bd]">{champion.title}</h3>
-          <p className="mt-1 text-sm text-slate-300">{champion.name}</p>
-          <p className="mt-3 text-xs tracking-[.2em] text-[#d9bd78]">{champion.tags.join(' · ')}</p>
-          <div className="mt-6 grid grid-cols-2 gap-3 text-left text-xs text-slate-300">
-            {[
-              ['攻击', champion.info.attack],
-              ['防御', champion.info.defense],
-              ['法术', champion.info.magic],
-              ['难度', champion.info.difficulty],
-            ].map(([label, value]) => (
-              <div key={String(label)}>
-                <span className="flex justify-between"><span>{label}</span><span>{value}</span></span>
-                <span className="mt-1 block h-1.5 rounded-full bg-[#64e6dd22]">
-                  <span
-                    className="block h-full rounded-full bg-[#64e6dd]"
-                    style={{ width: `${Number(value) * 10}%` }}
-                  />
-                </span>
+          {textures ? (
+            <TextureFaceCanvas source={textures.back} />
+          ) : (
+            <>
+              <p className="text-[10px] tracking-[.36em] text-[#64e6dd]">CHAMPION DOSSIER</p>
+              <h3 className="mt-3 font-serif text-3xl font-bold text-[#f5e8bd]">{champion.title}</h3>
+              <p className="mt-1 text-sm text-slate-300">{champion.name}</p>
+              <p className="mt-3 text-xs tracking-[.2em] text-[#d9bd78]">{champion.tags.join(' · ')}</p>
+              <div className="mt-6 grid grid-cols-2 gap-3 text-left text-xs text-slate-300">
+                {[
+                  ['攻击', champion.info.attack],
+                  ['防御', champion.info.defense],
+                  ['法术', champion.info.magic],
+                  ['难度', champion.info.difficulty],
+                ].map(([label, value]) => (
+                  <div key={String(label)}>
+                    <span className="flex justify-between"><span>{label}</span><span>{value}</span></span>
+                    <span className="mt-1 block h-1.5 rounded-full bg-[#64e6dd22]">
+                      <span
+                        className="block h-full rounded-full bg-[#64e6dd]"
+                        style={{ width: `${Number(value) * 10}%` }}
+                      />
+                    </span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-          <div className="mt-7 grid grid-cols-5 gap-2">
-            {abilities.map((ability) => (
-              <div key={ability.slot} className="min-w-0">
-                <div className="relative aspect-square overflow-hidden rounded-lg border border-[#d9bd78] bg-[#102a37]">
-                  <img className="h-full w-full object-cover" src={ability.iconUrl} alt="" draggable={false} />
-                  <span className="absolute right-0 top-0 rounded-bl bg-[#d9bd78] px-1 text-[9px] font-bold text-[#06101b]">
-                    {ability.slot}
-                  </span>
-                </div>
-                <p className="mt-1 truncate text-[9px] text-slate-300">{ability.name}</p>
+              <div className="mt-7 grid grid-cols-5 gap-2">
+                {abilities.map((ability) => (
+                  <div key={ability.slot} className="min-w-0">
+                    <div className="relative aspect-square overflow-hidden rounded-lg border border-[#d9bd78] bg-[#102a37]">
+                      <img className="h-full w-full object-cover" src={ability.iconUrl} alt="" draggable={false} />
+                      <span className="absolute right-0 top-0 rounded-bl bg-[#d9bd78] px-1 text-[9px] font-bold text-[#06101b]">
+                        {ability.slot}
+                      </span>
+                    </div>
+                    <p className="mt-1 truncate text-[9px] text-slate-300">{ability.name}</p>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-          <p className="mt-7 line-clamp-6 text-left text-xs leading-5 text-slate-300">{champion.lore}</p>
+              <p className="mt-7 line-clamp-6 text-left text-xs leading-5 text-slate-300">{champion.lore}</p>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -367,28 +411,61 @@ export function CardViewer3D({
           camera.position.set(0, 0, 8.2);
 
           const maxAnisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy());
-          const frontTexture = new THREE.CanvasTexture(textures.front);
-          partialCleanup.push(() => frontTexture.dispose());
+          const artworkTexture = new THREE.CanvasTexture(textures.artwork);
+          partialCleanup.push(() => artworkTexture.dispose());
+          const depthTexture = new THREE.CanvasTexture(textures.depth);
+          partialCleanup.push(() => depthTexture.dispose());
+          const overlayTexture = new THREE.CanvasTexture(textures.overlay);
+          partialCleanup.push(() => overlayTexture.dispose());
           const backTexture = new THREE.CanvasTexture(textures.back);
           partialCleanup.push(() => backTexture.dispose());
-          for (const texture of [frontTexture, backTexture]) {
+          for (const texture of [artworkTexture, overlayTexture, backTexture]) {
             texture.colorSpace = THREE.SRGBColorSpace;
             texture.anisotropy = maxAnisotropy;
           }
-
+          depthTexture.colorSpace = THREE.NoColorSpace;
+          depthTexture.minFilter = THREE.LinearFilter;
+          depthTexture.magFilter = THREE.LinearFilter;
+          depthTexture.generateMipmaps = false;
           const sideMaterial = new THREE.MeshStandardMaterial({
             color: 0xb89955,
             metalness: .78,
             roughness: .3,
           });
           partialCleanup.push(() => sideMaterial.dispose());
-          const frontMaterial = new THREE.MeshBasicMaterial({ map: frontTexture });
+          const frontMaterial = new THREE.MeshBasicMaterial({ color: 0x06101b });
           partialCleanup.push(() => frontMaterial.dispose());
           const backMaterial = new THREE.MeshBasicMaterial({ map: backTexture });
           partialCleanup.push(() => backMaterial.dispose());
+          const defaultReliefStrength = resolveReliefStrength(textures.depthConfidence, false);
+          const artworkMaterial = new THREE.ShaderMaterial({
+            uniforms: {
+              uArtwork: { value: artworkTexture },
+              uDepth: { value: depthTexture },
+              uDepthTexel: {
+                value: new THREE.Vector2(1 / textures.depth.width, 1 / textures.depth.height),
+              },
+              uViewShift: { value: new THREE.Vector2(0, 0) },
+              uViewDir: { value: new THREE.Vector3(0, 0, 1) },
+              uLightDir: { value: new THREE.Vector3(.25, .32, 1).normalize() },
+              uParallaxStrength: { value: defaultReliefStrength.parallax },
+              uNormalStrength: { value: defaultReliefStrength.normal },
+            },
+            vertexShader: CARD_RELIEF_VERTEX_SHADER,
+            fragmentShader: CARD_RELIEF_FRAGMENT_SHADER,
+          });
+          partialCleanup.push(() => artworkMaterial.dispose());
+          const overlayMaterial = new THREE.MeshBasicMaterial({
+            map: overlayTexture,
+            transparent: true,
+            depthWrite: false,
+            alphaTest: .005,
+            toneMapped: false,
+          });
+          partialCleanup.push(() => overlayMaterial.dispose());
           const geometry = new THREE.BoxGeometry(2.62, 4.62, .09, 1, 1, 1);
           partialCleanup.push(() => geometry.dispose());
-          const mesh = new THREE.Mesh(geometry, [
+          const body = new THREE.Mesh(geometry, [
             sideMaterial,
             sideMaterial,
             sideMaterial,
@@ -396,6 +473,18 @@ export function CardViewer3D({
             frontMaterial,
             backMaterial,
           ]);
+          const artworkGeometry = new THREE.PlaneGeometry(2.58, 4.55, 1, 1);
+          partialCleanup.push(() => artworkGeometry.dispose());
+          const overlayGeometry = new THREE.PlaneGeometry(2.62, 4.62, 1, 1);
+          partialCleanup.push(() => overlayGeometry.dispose());
+          const artworkMesh = new THREE.Mesh(artworkGeometry, artworkMaterial);
+          artworkMesh.position.z = .051;
+          artworkMesh.renderOrder = 1;
+          const overlayMesh = new THREE.Mesh(overlayGeometry, overlayMaterial);
+          overlayMesh.position.z = .058;
+          overlayMesh.renderOrder = 2;
+          const mesh = new THREE.Group();
+          mesh.add(body, artworkMesh, overlayMesh);
           mesh.rotation.order = 'XYZ';
           scene.add(mesh);
           scene.add(new THREE.HemisphereLight(0xb9ffff, 0x13202b, 2.2));
@@ -412,12 +501,45 @@ export function CardViewer3D({
           let previousFrame = performance.now();
           let reducedMotion = reducedMotionRef.current;
           const pointer: PointerSample = { active: false, x: 0, y: 0, time: 0 };
+          const worldPosition = new THREE.Vector3();
+          const worldQuaternion = new THREE.Quaternion();
+          const inverseQuaternion = new THREE.Quaternion();
+          const localView = new THREE.Vector3();
+          const localLight = new THREE.Vector3();
+          const viewShiftUniform = artworkMaterial.uniforms.uViewShift!.value;
+          const viewDirectionUniform = artworkMaterial.uniforms.uViewDir!.value;
+          const lightDirectionUniform = artworkMaterial.uniforms.uLightDir!.value;
 
           const desiredRotationY = () => view.targetTiltY + (view.sideBack ? Math.PI : 0);
           const renderNow = () => {
             mesh.rotation.x = view.rotationX;
             mesh.rotation.y = view.rotationY;
             mesh.scale.setScalar(view.scale);
+            mesh.updateWorldMatrix(true, true);
+            mesh.getWorldPosition(worldPosition);
+            mesh.getWorldQuaternion(worldQuaternion);
+            inverseQuaternion.copy(worldQuaternion).invert();
+            localView
+              .copy(camera.position)
+              .sub(worldPosition)
+              .normalize()
+              .applyQuaternion(inverseQuaternion);
+            const reliefViewShift = resolveReliefViewShift(localView, reducedMotion);
+            viewShiftUniform.set(reliefViewShift.x, reliefViewShift.y);
+            localLight
+              .copy(keyLight.position)
+              .sub(worldPosition)
+              .normalize()
+              .applyQuaternion(inverseQuaternion);
+            viewDirectionUniform.copy(localView);
+            lightDirectionUniform.copy(localLight);
+            const reliefStrength = resolveReliefStrength(textures.depthConfidence, reducedMotion);
+            artworkMaterial.uniforms.uParallaxStrength!.value = reliefStrength.parallax;
+            artworkMaterial.uniforms.uNormalStrength!.value = reliefStrength.normal;
+            if (import.meta.env.DEV) {
+              renderer.domElement.dataset.parallaxShift =
+                `${viewShiftUniform.x.toFixed(3)},${viewShiftUniform.y.toFixed(3)}`;
+            }
             renderer.render(scene, camera);
           };
 
@@ -582,7 +704,7 @@ export function CardViewer3D({
 
           controllerRef.current = controller;
           setRenderMode('webgl');
-          setStatusMessage('3D 卡片已就绪。拖动可旋转，滚轮可缩放。');
+          setStatusMessage('景深卡片已就绪。拖动可观察人物与背景的立体视差，滚轮可缩放。');
           requestRender();
 
           release = () => {
@@ -591,11 +713,18 @@ export function CardViewer3D({
             resizeObserver?.disconnect();
             window.removeEventListener('resize', resize);
             controllerRef.current = null;
+            scene.remove(mesh);
             geometry.dispose();
+            artworkGeometry.dispose();
+            overlayGeometry.dispose();
             sideMaterial.dispose();
             frontMaterial.dispose();
             backMaterial.dispose();
-            frontTexture.dispose();
+            artworkMaterial.dispose();
+            overlayMaterial.dispose();
+            artworkTexture.dispose();
+            depthTexture.dispose();
+            overlayTexture.dispose();
             backTexture.dispose();
             renderer.dispose();
             renderer.forceContextLoss();
@@ -819,7 +948,13 @@ export function CardViewer3D({
     'min-h-11 rounded-lg border border-[#d9bd7855] bg-[#0a1b27dd] px-3 text-sm text-[#f4ead7] transition hover:border-[#d9bd78] hover:bg-[#102a38] disabled:cursor-wait disabled:opacity-45';
 
   return (
-    <section className={`relative ${className}`} aria-label={`${champion.title} ${skin.name} 卡片鉴赏`}>
+    <section
+      className={`relative ${className}`}
+      aria-label={`${champion.title} ${skin.name} 卡片鉴赏`}
+      data-artwork-fit={texturesRef.current?.artworkFit.mode ?? renderMode}
+      data-depth-effect={renderMode === 'webgl' ? 'relief-parallax' : renderMode}
+      data-depth-confidence={texturesRef.current?.depthConfidence?.toFixed(2)}
+    >
       <div
         className={`relative w-full overflow-hidden rounded-2xl border border-[#d9bd7833] bg-[#05101a] shadow-[0_28px_90px_rgba(0,0,0,.46)] ${
           fullscreen ? 'h-[calc(100dvh-8.5rem)] min-h-[420px]' : 'h-[min(66vh,680px)] min-h-[430px]'
@@ -837,7 +972,12 @@ export function CardViewer3D({
       >
         <div ref={canvasHostRef} className="absolute inset-0" aria-hidden="true" />
         {(renderMode === 'loading' || renderMode === 'fallback') && (
-          <FallbackCard champion={champion} skin={skin} view={viewRef.current} />
+          <FallbackCard
+            champion={champion}
+            skin={skin}
+            view={viewRef.current}
+            textures={texturesRef.current ?? undefined}
+          />
         )}
         {renderMode === 'loading' && (
           <span className="pointer-events-none absolute right-3 top-3 rounded-full border border-[#d9bd7855] bg-[#04111bd9] px-3 py-1 text-[11px] tracking-[.12em] text-[#ead79f]">

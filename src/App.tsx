@@ -105,9 +105,11 @@ export function App() {
     const currentIndex = champion.skins.findIndex((edition) => edition.num === skin.num);
     for (const edition of [champion.skins[currentIndex - 1], champion.skins[currentIndex + 1]]) {
       if (!edition) continue;
-      const image = new Image();
-      image.crossOrigin = "anonymous";
-      image.src = edition.splashUrl;
+      for (const url of [edition.splashUrl, edition.loadingUrl]) {
+        const image = new Image();
+        image.crossOrigin = "anonymous";
+        image.src = url;
+      }
     }
   }, [champion, skin.num]);
 
