@@ -194,7 +194,20 @@ function FallbackCard({
           className="absolute inset-0 overflow-hidden rounded-[1.35rem] border-[3px] border-[#d9bd78] bg-[#07131f] shadow-2xl ring-[10px] ring-[#17303b]"
           style={faceStyle}
         >
-          <img className="h-full w-full object-cover" src={skin.loadingUrl} alt="" draggable={false} />
+          <img
+            key={skin.splashUrl}
+            className="h-full w-full object-cover"
+            src={skin.splashUrl}
+            alt=""
+            draggable={false}
+            crossOrigin="anonymous"
+            onError={(event) => {
+              const image = event.currentTarget;
+              if (image.dataset.fallback === 'true') return;
+              image.dataset.fallback = 'true';
+              image.src = skin.loadingUrl;
+            }}
+          />
           <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#020912] via-[#020912dd] to-transparent px-5 pb-7 pt-24 text-center">
             <p className="font-serif text-3xl font-bold text-[#f5e8bd]">{champion.title}</p>
             <p className="mt-1 text-xs tracking-[.28em] text-[#d7dedb]">{champion.name}</p>

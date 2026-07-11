@@ -111,6 +111,30 @@ async function loadOptionalImage(url: string, signal?: AbortSignal): Promise<HTM
   }
 }
 
+export function getCardArtworkCandidates(skin: SkinEdition): string[] {
+  return Array.from(new Set([skin.splashUrl, skin.loadingUrl].filter(Boolean)));
+}
+
+async function loadCardArtwork(skin: SkinEdition, signal?: AbortSignal): Promise<HTMLImageElement> {
+  const candidates = getCardArtworkCandidates(skin);
+  let lastError: unknown;
+
+  for (const url of candidates) {
+    try {
+      return await loadCorsImage(url, signal);
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') throw error;
+      lastError = error;
+    }
+  }
+
+  throw new CardTextureError(
+    '官方高清原画和竖版原画均加载失败，无法生成卡面。',
+    candidates[0],
+    { cause: lastError },
+  );
+}
+
 function drawImageCover(
   context: CanvasRenderingContext2D,
   image: HTMLImageElement,
@@ -447,7 +471,10 @@ export async function createCardTextureCanvases(
   const abilities = [champion.passive, ...champion.spells]
     .filter((ability): ability is Ability => Boolean(ability))
     .slice(0, 5);
-  const artworkPromise = loadCorsImage(skin.loadingUrl, signal);
+  // Splash art carries substantially more source pixels than the loading-screen
+  // portrait. It is cropped into the card frame, with the portrait kept as a
+  // resilient fallback for older or temporarily missing splash assets.
+  const artworkPromise = loadCardArtwork(skin, signal);
   const iconPromises = abilities.map((ability) => loadOptionalImage(ability.iconUrl, signal));
   const [artwork, icons] = await Promise.all([artworkPromise, Promise.all(iconPromises)]);
   if (signal?.aborted) throw new DOMException('卡面生成已取消。', 'AbortError');
@@ -458,4 +485,3 @@ export async function createCardTextureCanvases(
   drawBack(back, champion, abilities, icons);
   return { front, back };
 }
-

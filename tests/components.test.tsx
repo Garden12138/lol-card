@@ -5,12 +5,17 @@ import { CardMini } from "../src/components/CardMini";
 import { ChampionDetail } from "../src/components/ChampionDetail";
 import { ComparisonSection } from "../src/components/ComparisonSection";
 import { champions } from "../src/data/champions";
+import { getCardArtworkCandidates } from "../src/lib/cardTexture";
 import { toCardEditionKey } from "../src/lib/urlState";
 
 const ahri = champions.find((champion) => champion.id === "Ahri")!;
 const baseSkin = ahri.skins[0]!;
 
 describe("卡片展示", () => {
+  it("主卡面优先使用高清 splash 原画并保留竖版回退", () => {
+    expect(getCardArtworkCandidates(baseSkin)).toEqual([baseSkin.splashUrl, baseSkin.loadingUrl]);
+  });
+
   it("按受控状态展示正反面，并提供卡面文本替代", () => {
     const { container, rerender } = render(<CardMini champion={ahri} skin={baseSkin} />);
     expect(screen.getByLabelText(`${ahri.title} · ${baseSkin.name}`)).toBeInTheDocument();

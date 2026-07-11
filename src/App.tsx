@@ -107,7 +107,7 @@ export function App() {
       if (!edition) continue;
       const image = new Image();
       image.crossOrigin = "anonymous";
-      image.src = edition.loadingUrl;
+      image.src = edition.splashUrl;
     }
   }, [champion, skin.num]);
 
