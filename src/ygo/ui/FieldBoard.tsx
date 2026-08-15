@@ -64,12 +64,31 @@ function Row({
   );
 }
 
-export function PileCounts({ state, id }: { state: DuelState; id: PlayerId }) {
+export function PileCounts({
+  state,
+  id,
+  actions,
+  onAct,
+}: {
+  state: DuelState;
+  id: PlayerId;
+  actions?: Action[];
+  onAct?: (action: Action) => void;
+}) {
   const player = state.players[id];
+  const synchro = actions?.find((action) => action.type === "synchroSummon");
   return (
     <p className="ygo-piles">
-      卡组 {player.deck.length} · 额外 {player.extra.length} · 墓地 {player.gy.length} · 场地{" "}
-      {player.field ? "有" : "无"} · 怪兽 {occupiedMonsters(player).length} · 魔陷 {occupiedSpells(player).length}
+      卡组 {player.deck.length} ·{" "}
+      {synchro && onAct && id === 0 ? (
+        <button type="button" className="ygo-extra" onClick={() => onAct(synchro)}>
+          额外 {player.extra.length}
+        </button>
+      ) : (
+        <>额外 {player.extra.length}</>
+      )}{" "}
+      · 墓地 {player.gy.length} · 场地 {player.field ? "有" : "无"} · 怪兽 {occupiedMonsters(player).length} · 魔陷{" "}
+      {occupiedSpells(player).length}
     </p>
   );
 }

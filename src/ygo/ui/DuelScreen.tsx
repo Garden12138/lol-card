@@ -47,7 +47,7 @@ export function DuelScreen({
       <p className="ygo-hand-backs">对方手牌 {foe.hand.length}</p>
       <PileCounts state={state} id={1} />
       <FieldBoard state={state} me={0} actions={actions} onAct={onAct} />
-      <PileCounts state={state} id={0} />
+      <PileCounts state={state} id={0} actions={actions} onAct={onAct} />
       <ChainStack state={state} />
       <PromptBar actions={actions} onAct={onAct} label={label} />
       <HandDock state={state} actions={actions} onAct={onAct} />

@@ -1,6 +1,7 @@
 import { getCardDef } from "../data/cards";
 import { computedAtk, emptyZones, isMainPhase, occupiedMonsters, occupiedSpells, other, tributeRequired } from "./helpers";
 import { canNormalSummon } from "./summon";
+import { synchroOptions } from "./synchro";
 import type { Action, CardInstance, DuelState, PlayerState } from "./types";
 
 function combinations<T>(items: T[], k: number): T[][] {
@@ -28,7 +29,7 @@ function summonActions(state: DuelState, player: PlayerState, type: "normalSummo
   let zones = emptyZones(player.monsters);
   for (const card of player.hand) {
     const def = getCardDef(card.defId);
-    if (def.kind !== "monster" || def.monsterType === "fusion") continue;
+    if (def.kind !== "monster" || def.monsterType === "fusion" || def.monsterType === "synchro") continue;
     const need = tributeRequired(def.level ?? 1);
     const tributeSets = need === 0 ? [[]] : combinations(monsters, need);
     for (const tributes of tributeSets) {
@@ -113,7 +114,7 @@ function activateTargets(state: DuelState, player: PlayerState, card: CardInstan
       return player.hand
         .filter((c) => {
           const d = getCardDef(c.defId);
-          return d.kind === "monster" && (d.level ?? 99) <= 4 && d.monsterType !== "fusion";
+          return d.kind === "monster" && (d.level ?? 99) <= 4 && d.monsterType !== "fusion" && d.monsterType !== "synchro";
         })
         .map((c) => [c.uid]);
     case "equipBuff":
@@ -177,6 +178,7 @@ export function legalActions(state: DuelState): Action[] {
   if (isMainPhase(state) && state.turnPlayer === actor.id) {
     actions.push(...summonActions(state, actor, "normalSummon"));
     actions.push(...summonActions(state, actor, "setMonster"));
+    actions.push(...synchroOptions(actor));
     for (const card of occupiedMonsters(actor)) {
       if (card.summonedThisTurn || card.attackedThisTurn || card.changedThisTurn) continue;
       actions.push({ type: "changePosition", uid: card.uid });

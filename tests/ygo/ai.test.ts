@@ -6,7 +6,7 @@ import { duel } from "./helpers";
 
 describe("ygo ai", () => {
   it("always returns a currently legal action", () => {
-    let state = duel("piltover", "shadow");
+    let state = duel("ionia", "piltover");
     state.players[1].controller = "ai";
     for (let i = 0; i < 30; i += 1) {
       if (state.phase === "gameOver") break;

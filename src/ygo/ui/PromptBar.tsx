@@ -11,10 +11,16 @@ export function PromptBar({
 }) {
   const next = actions.find((action) => action.type === "nextPhase");
   const pass = actions.find((action) => action.type === "respondPass");
+  const synchro = actions.find((action) => action.type === "synchroSummon");
   return (
     <div className="ygo-prompt">
       <p>{label}</p>
       <div className="ygo-prompt__row">
+        {synchro ? (
+          <button type="button" onClick={() => onAct(synchro)}>
+            同调召唤
+          </button>
+        ) : null}
         {pass ? (
           <button type="button" onClick={() => onAct(pass)}>
             通过

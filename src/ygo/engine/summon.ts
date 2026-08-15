@@ -44,7 +44,7 @@ export function canNormalSummon(state: DuelState, playerId: PlayerId, uid: strin
   const card = player.hand.find((item) => item.uid === uid);
   if (!card) return false;
   const def = getCardDef(card.defId);
-  if (def.kind !== "monster" || def.monsterType === "fusion") return false;
+  if (def.kind !== "monster" || def.monsterType === "fusion" || def.monsterType === "synchro") return false;
   const need = tributeRequired(def.level ?? 1);
   if (tributes.length !== need) return false;
   const field = occupiedMonsters(player);

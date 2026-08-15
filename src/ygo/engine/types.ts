@@ -13,7 +13,7 @@ export type Race =
   | "Fairy"
   | "Plant";
 export type CardKind = "monster" | "spell" | "trap";
-export type MonsterType = "normal" | "effect" | "fusion";
+export type MonsterType = "normal" | "effect" | "fusion" | "synchro";
 export type SpellType = "normal" | "quick" | "continuous" | "equip" | "field";
 export type TrapType = "normal" | "continuous";
 export type SpellSpeed = 1 | 2;
@@ -55,6 +55,7 @@ export interface CardDef {
   attr?: Attribute;
   race?: Race;
   monsterType?: MonsterType;
+  tuner?: boolean;
   fusionMaterials?: [string, string];
   spellType?: SpellType;
   trapType?: TrapType;
@@ -137,6 +138,7 @@ export type Action =
       materials?: string[];
     }
   | { type: "attack"; attackerUid: string; targetUid: string | "direct" }
+  | { type: "synchroSummon"; extraId: string; materials: string[]; zone: number }
   | { type: "respondPass" }
   | { type: "nextPhase" };
 

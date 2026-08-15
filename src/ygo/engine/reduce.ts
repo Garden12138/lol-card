@@ -3,6 +3,7 @@ import { declareAttack } from "./battle";
 import { openRespondAfterAttack, passResponse, pushChain } from "./chain";
 import { cloneState, findOnField, log, other, removeFromHand } from "./helpers";
 import { applySummon } from "./summon";
+import { applySynchro } from "./synchro";
 import { applyWinCheck, loseByDeckout } from "./win";
 import { legalActions } from "./legal";
 import type { Action, DuelState } from "./types";
@@ -101,6 +102,9 @@ export function reduce(state: DuelState, action: Action): DuelState {
       if (declareAttack(next, action.attackerUid, action.targetUid)) {
         openRespondAfterAttack(next);
       }
+      break;
+    case "synchroSummon":
+      applySynchro(next, action);
       break;
     case "respondPass":
       passResponse(next);

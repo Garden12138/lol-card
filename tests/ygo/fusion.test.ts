@@ -18,4 +18,17 @@ describe("fusion", () => {
     expect(state.players[0].gy.some((card) => card.defId === "jinx")).toBe(true);
     expect(state.players[0].gy.some((card) => card.defId === "hextechFusion")).toBe(true);
   });
+
+  it("lets Demacia fuse Garen and Lux into Judgment", () => {
+    let state = duel("demacia", "shadow");
+    state = moveToHand(state, 0, "hextechFusion");
+    const fusion = legalActions(state).find(
+      (action) => action.type === "activate" && action.fusionId === "demaciaJudgment",
+    );
+    expect(fusion).toBeTruthy();
+    if (!fusion) return;
+    state = act(state, fusion);
+    state = passBoth(state);
+    expect(occupiedMonsters(state.players[0]).some((card) => card.defId === "demaciaJudgment")).toBe(true);
+  });
 });
