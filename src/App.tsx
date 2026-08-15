@@ -22,6 +22,7 @@ import {
   toCardEditionKey,
   type UrlState,
 } from "./lib/urlState";
+import { GameApp } from "./game/ui/GameApp";
 import type { CardEditionKey, ChampionCard, ChampionTag, SkinEdition } from "./types/cards";
 
 const CardViewer3D = lazy(() =>
@@ -33,7 +34,7 @@ const ComparisonSection = lazy(() =>
 
 function initialUrlState(): UrlState {
   if (typeof window === "undefined") {
-    return { championId: "Ahri", skinNum: 0, compareKeys: [] };
+    return { championId: "Ahri", skinNum: 0, compareKeys: [], mode: "gallery" };
   }
   return parseUrlState(window.location.search, champions);
 }
@@ -52,6 +53,7 @@ export function App() {
   const [championId, setChampionId] = useState(initialState.championId);
   const [skinNum, setSkinNum] = useState(initialState.skinNum);
   const [compareKeys, setCompareKeys] = useState<CardEditionKey[]>(initialState.compareKeys);
+  const [mode, setMode] = useState(initialState.mode);
   const [query, setQuery] = useState("");
   const [activeTag, setActiveTag] = useState<ChampionTag | "all">("all");
   const [toast, setToast] = useState("");
@@ -72,7 +74,7 @@ export function App() {
   );
 
   useEffect(() => {
-    const state: UrlState = { championId: champion.id, skinNum: skin.num, compareKeys };
+    const state: UrlState = { championId: champion.id, skinNum: skin.num, compareKeys, mode };
     const nextSearch = serializeUrlState(state);
     if (popstateRef.current) {
       popstateRef.current = false;
@@ -81,7 +83,7 @@ export function App() {
     if (window.location.search !== nextSearch) {
       window.history.replaceState(null, "", `${nextSearch}${window.location.hash}`);
     }
-  }, [champion.id, skin.num, compareKeys]);
+  }, [champion.id, skin.num, compareKeys, mode]);
 
   useEffect(() => {
     const handlePopState = () => {
@@ -90,6 +92,7 @@ export function App() {
       setChampionId(state.championId);
       setSkinNum(state.skinNum);
       setCompareKeys(state.compareKeys);
+      setMode(state.mode);
     };
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
@@ -153,6 +156,10 @@ export function App() {
 
   const heroStyle = { "--hero-art": `url("${skin.splashUrl}")` } as CSSProperties;
 
+  if (mode === "play") {
+    return <GameApp onExit={() => setMode("gallery")} />;
+  }
+
   return (
     <div className="site-shell">
       <header className="site-header">
@@ -168,6 +175,9 @@ export function App() {
             <a href="#viewer">鉴赏</a>
             <a href="#gallery">图鉴</a>
             <a href="#comparison">对比</a>
+            <button type="button" className="site-nav__play" onClick={() => setMode("play")}>
+              进入对局
+            </button>
           </nav>
           <div className="site-header__meta">
             <span className="patch-chip">PATCH {dataVersion}</span>

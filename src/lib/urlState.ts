@@ -6,6 +6,7 @@ export type UrlState = {
   championId: string;
   skinNum: number;
   compareKeys: CardEditionKey[];
+  mode: "gallery" | "play";
 };
 
 type CardSelection = Pick<UrlState, "championId" | "skinNum">;
@@ -116,7 +117,7 @@ export function parseUrlState(
     if (compareKeys.length === MAX_COMPARE_CARDS) break;
   }
 
-  return { ...active, compareKeys };
+  return { ...active, compareKeys, mode: params.get("mode") === "play" ? "play" : "gallery" };
 }
 
 /** Returns a canonical query string, including the leading question mark. */
@@ -130,6 +131,7 @@ export function serializeUrlState(state: UrlState): string {
 
   params.set("champion", championId);
   params.set("skin", String(skinNum));
+  if (state.mode === "play") params.set("mode", "play");
 
   const seen = new Set<CardEditionKey>();
   for (const key of state.compareKeys) {
