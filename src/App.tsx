@@ -24,6 +24,7 @@ import {
 } from "./lib/urlState";
 import { FightApp } from "./fight/FightApp";
 import { GameApp } from "./game/ui/GameApp";
+import { YgoApp } from "./ygo/YgoApp";
 import type { CardEditionKey, ChampionCard, ChampionTag, SkinEdition } from "./types/cards";
 
 const CardViewer3D = lazy(() =>
@@ -165,6 +166,10 @@ export function App() {
     return <FightApp onExit={() => setMode("gallery")} />;
   }
 
+  if (mode === "ygo") {
+    return <YgoApp onExit={() => setMode("gallery")} />;
+  }
+
   return (
     <div className="site-shell">
       <header className="site-header">
@@ -185,6 +190,9 @@ export function App() {
             </button>
             <button type="button" className="site-nav__play" onClick={() => setMode("fight")}>
               格斗对战
+            </button>
+            <button type="button" className="site-nav__play" onClick={() => setMode("ygo")}>
+              峡谷决斗
             </button>
           </nav>
           <div className="site-header__meta">

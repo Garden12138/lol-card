@@ -6,7 +6,7 @@ export type UrlState = {
   championId: string;
   skinNum: number;
   compareKeys: CardEditionKey[];
-  mode: "gallery" | "play" | "fight";
+  mode: "gallery" | "play" | "fight" | "ygo";
 };
 
 type CardSelection = Pick<UrlState, "championId" | "skinNum">;
@@ -118,7 +118,14 @@ export function parseUrlState(
   }
 
   const modeParam = params.get("mode");
-  const mode = modeParam === "fight" ? "fight" : modeParam === "play" ? "play" : "gallery";
+  const mode =
+    modeParam === "ygo"
+      ? "ygo"
+      : modeParam === "fight"
+        ? "fight"
+        : modeParam === "play"
+          ? "play"
+          : "gallery";
 
   return { ...active, compareKeys, mode };
 }
@@ -134,7 +141,9 @@ export function serializeUrlState(state: UrlState): string {
 
   params.set("champion", championId);
   params.set("skin", String(skinNum));
-  if (state.mode === "play" || state.mode === "fight") params.set("mode", state.mode);
+  if (state.mode === "play" || state.mode === "fight" || state.mode === "ygo") {
+    params.set("mode", state.mode);
+  }
 
   const seen = new Set<CardEditionKey>();
   for (const key of state.compareKeys) {
