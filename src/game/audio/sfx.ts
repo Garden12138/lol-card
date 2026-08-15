@@ -48,7 +48,7 @@ export function sfxFromLog(line: string): SfxKind | null {
   if (line.includes("摸了")) return "deal";
   if (line.includes("闪避")) return "dodge";
   if (line.includes("治疗") || line.includes("回复")) return "heal";
-  if (line.includes("伤害")) return "strike";
+  if (line.includes("伤害") || line.includes("普攻")) return "strike";
   if (line.includes("阵亡")) return "death";
   return null;
 }

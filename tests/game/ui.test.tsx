@@ -1,8 +1,9 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { App } from "../../src/App";
 import { createMatch } from "../../src/game/engine/createMatch";
 import { GameApp } from "../../src/game/ui/GameApp";
+import { PickScreen } from "../../src/game/ui/PickScreen";
 import { pickAll } from "./helpers";
 
 afterEach(() => {
@@ -39,6 +40,29 @@ describe("峡谷身份战入口", () => {
     render(<GameApp onExit={() => undefined} initialState={started} />);
     fireEvent.click(screen.getByLabelText(/普攻/));
     fireEvent.click(screen.getByLabelText(/座位 1/));
-    expect(screen.getByText("请打出闪避（仍需 1 张）或取消")).toBeInTheDocument();
+    expect(screen.getByText(/等待 光辉女郎/)).toBeInTheDocument();
+  });
+
+  it("shows Chinese names on pick cards", () => {
+    const state = createMatch(2);
+    state.prompt.actor = 0;
+    state.players[0]!.candidates = ["Garen", "Ahri", "Lux"];
+    render(<PickScreen state={state} mySeat={0} onPick={() => undefined} />);
+    expect(screen.getByText(/盖伦/)).toBeInTheDocument();
+    expect(screen.getByText(/坚韧/)).toBeInTheDocument();
+  });
+
+  it("labels blue and red seats in a 2v2 table", () => {
+    const started = pickAll(
+      createMatch({
+        mode: "team",
+        seed: 4,
+        seatCount: 4,
+        controllers: ["human", "ai", "ai", "ai"],
+      }),
+    );
+    render(<GameApp onExit={() => undefined} initialState={started} />);
+    expect(screen.getAllByText(/蓝方/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/红方/).length).toBeGreaterThan(0);
   });
 });

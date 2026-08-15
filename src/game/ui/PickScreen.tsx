@@ -26,27 +26,47 @@ export function PickScreen({
       {state.config.mode === "team" && (
         <p className="rift-pick__role">你是{mySeat % 2 === 0 ? "蓝方" : "红方"}</p>
       )}
-      <div className="rift-pick__grid">
-        {(human ? seat.candidates : []).map((championId) => {
-          const champion = getChampionById(championId);
-          const skin = champion ? getSkinByNum(champion, 0) : undefined;
-          const def = getGameChampion(championId);
-          return (
-            <button
-              key={championId}
-              type="button"
-              className="rift-pick__card"
-              onClick={() => onPick({ type: "pickChampion", player: mySeat, championId })}
-            >
-              {skin && <img src={skin.loadingUrl} alt="" />}
-              <strong>{champion?.title ?? championId}</strong>
-              <span>
-                {def?.skillName}：{def?.skillText}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+      {human ? (
+        <div className="rift-pick__grid">
+          {seat.candidates.map((championId) => {
+            const champion = getChampionById(championId);
+            const skin = champion ? getSkinByNum(champion, 0) : undefined;
+            const def = getGameChampion(championId);
+            const art = skin?.splashUrl || skin?.loadingUrl;
+            return (
+              <button
+                key={championId}
+                type="button"
+                className="rift-pick__card"
+                onClick={() => onPick({ type: "pickChampion", player: mySeat, championId })}
+              >
+                {art && <img src={art} alt="" />}
+                <strong>
+                  {champion?.name ?? championId}
+                  {champion?.title ? ` · ${champion.title}` : ""}
+                </strong>
+                <span>
+                  {def?.skillName}：{def?.skillText}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        <ul className="rift-pick__wait">
+          {state.players.map((item) => (
+            <li key={item.id}>
+              座位 {item.id}
+              {item.id === mySeat ? "（你）" : ""}：
+              {item.championId
+                ? `${getChampionById(item.championId)?.name ?? item.championId} 已选`
+                : item.id === actor
+                  ? "选将中"
+                  : "等待"}
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }

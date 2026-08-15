@@ -41,9 +41,10 @@ export function GameApp({
       return;
     }
     if (state.log.length > logLen.current) {
-      const line = state.log[state.log.length - 1]!;
-      const kind = sfxFromLog(line);
-      if (kind) playSfx(kind);
+      for (const line of state.log.slice(logLen.current)) {
+        const kind = sfxFromLog(line);
+        if (kind) playSfx(kind);
+      }
     }
     logLen.current = state.log.length;
     if (state.winner && !winPlayed.current) {
@@ -188,7 +189,7 @@ export function GameApp({
         <TableScreen
           state={state}
           mySeat={mySeat}
-          selectedTarget={null}
+          pendingCardId={pendingCardId}
           onPlayCard={playCard}
           onAction={dispatch}
           onSelectSeat={selectSeat}

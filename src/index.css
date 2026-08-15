@@ -1785,6 +1785,13 @@ button:disabled {
   border-radius: 10px;
 }
 
+.rift-pick__wait {
+  margin: 0;
+  padding-left: 1.2rem;
+  display: grid;
+  gap: 6px;
+}
+
 .rift-table {
   display: grid;
   grid-template-columns: 180px 1fr 180px;
@@ -1813,6 +1820,28 @@ button:disabled {
 
 .rift-seat.is-selected {
   border-color: var(--gold-500);
+}
+
+.rift-seat.is-turn {
+  box-shadow: 0 0 0 1px rgba(85, 216, 208, 0.55);
+}
+
+.rift-seat--blue {
+  border-left: 3px solid #4aa3ff;
+}
+
+.rift-seat--red {
+  border-left: 3px solid #e36b6b;
+}
+
+.rift-table--duel {
+  grid-template-columns: 1fr;
+}
+
+.rift-table--duel .rift-seat--top,
+.rift-table--duel .rift-table__center,
+.rift-table--duel .rift-table__self {
+  grid-column: 1;
 }
 
 .rift-seat.is-dead {
