@@ -2163,6 +2163,15 @@ button:disabled {
   font-size: 13px;
 }
 
+.ygo-extra {
+  display: inline;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #7eb6e8;
+  cursor: pointer;
+}
+
 .ygo-decks {
   display: grid;
   gap: 10px;
