@@ -10,6 +10,19 @@ export interface RoomClient {
   seat: PlayerId;
 }
 
+export interface LobbySeat {
+  seat: PlayerId;
+  name: string;
+  kind: "human" | "ai";
+}
+
+export interface LobbyView {
+  room: string;
+  mode: GameMode;
+  seatCount: 2 | 4;
+  seats: LobbySeat[];
+}
+
 export class GameRoom {
   readonly id: string;
   readonly mode: GameMode;
@@ -30,10 +43,31 @@ export class GameRoom {
     const existing = this.clients.find((item) => item.id === id);
     if (existing) return existing.seat;
     if (this.started) throw new Error("对局已开始");
-    const seat = this.clients.length;
+    const taken = new Set(this.clients.map((item) => item.seat));
+    let seat = 0;
+    while (taken.has(seat)) seat += 1;
     if (seat >= this.seatCount()) throw new Error("房间已满");
     this.clients.push({ id, name, seat });
     return seat;
+  }
+
+  leave(id: string): boolean {
+    if (this.started) return false;
+    const index = this.clients.findIndex((item) => item.id === id);
+    if (index < 0) return false;
+    this.clients.splice(index, 1);
+    return true;
+  }
+
+  lobbyView(): LobbyView {
+    const seatCount = this.seatCount();
+    const seats: LobbySeat[] = Array.from({ length: seatCount }, (_, seat) => {
+      const human = this.clients.find((item) => item.seat === seat);
+      return human
+        ? { seat, name: human.name, kind: "human" }
+        : { seat, name: "AI", kind: "ai" };
+    });
+    return { room: this.id, mode: this.mode, seatCount, seats };
   }
 
   config(): MatchConfig {

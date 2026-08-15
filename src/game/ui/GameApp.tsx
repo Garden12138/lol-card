@@ -5,7 +5,7 @@ import { GAME_TITLE } from "../data/copy";
 import { createMatch } from "../engine/createMatch";
 import { legalActions, reduce } from "../engine/reduce";
 import type { Action, GameCard, GameMode, GameState, PlayerId } from "../engine/types";
-import { createGameSocket, sendNet } from "../net/client";
+import { createGameSocket, sendNet, type LobbyPayload } from "../net/client";
 import { CastOverlay } from "./CastOverlay";
 import { LobbyScreen } from "./LobbyScreen";
 import { PickScreen } from "./PickScreen";
@@ -26,6 +26,7 @@ export function GameApp({
   const [overlay, setOverlay] = useState<{ championId?: string; card?: GameCard } | null>(null);
   const [muted, setMuted] = useState(isSfxMuted);
   const [lanHint, setLanHint] = useState("");
+  const [lobby, setLobby] = useState<Omit<LobbyPayload, "type"> | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
   const winPlayed = useRef(false);
   const logLen = useRef(0);
@@ -74,16 +75,23 @@ export function GameApp({
     return () => window.cancelAnimationFrame(frame);
   }, [state]);
 
-  const connect = (url: string, host: boolean, mode: GameMode) => {
+  const connect = (url: string, host: boolean, mode: GameMode, name: string) => {
+    setLanHint("");
     const socket = createGameSocket(url, {
-      onHello: (playerId) => setMySeat(playerId),
+      onHello: (playerId, next) => {
+        setMySeat(playerId);
+        setLobby(next);
+      },
+      onLobby: (next) => setLobby(next),
       onState: (next) => setState(next),
       onError: (message) => setLanHint(message),
     });
     socket.addEventListener("open", () => {
       setOnline(true);
-      sendNet(socket, { type: "join", name: "召唤师", host, mode, room: "rift" });
-      if (host) setLanHint(`已开房，其他人连接 ${url.replace("ws://", "")} 后由你点「开始对局」`);
+      sendNet(socket, { type: "join", name: name.trim() || "召唤师", host, mode, room: "rift" });
+    });
+    socket.addEventListener("error", () => {
+      setLanHint("无法连接主机。请先在开房电脑运行 npm run dev:lan。");
     });
     socketRef.current = socket;
   };
@@ -156,11 +164,6 @@ export function GameApp({
           >
             {muted ? "音效：关" : "音效：开"}
           </button>
-          {online && !state && mySeat === 0 && (
-            <button type="button" onClick={() => sendNet(socketRef.current!, { type: "start" })}>
-              开始对局
-            </button>
-          )}
           <button type="button" onClick={onExit}>
             返回鉴赏馆
           </button>
@@ -169,9 +172,15 @@ export function GameApp({
       {!state && (
         <LobbyScreen
           lanHint={lanHint}
+          lobby={lobby}
+          mySeat={mySeat}
+          isHost={online && mySeat === 0}
+          onStart={() => sendNet(socketRef.current!, { type: "start" })}
           onSolo={startSolo}
-          onHost={(mode) => connect("ws://127.0.0.1:8788", true, mode)}
-          onJoin={(host) => connect(`ws://${host.replace(/^ws:\/\//, "")}`, false, "identity")}
+          onHost={(mode, name) => connect("ws://127.0.0.1:8788", true, mode, name)}
+          onJoin={(host, name) =>
+            connect(`ws://${host.replace(/^ws:\/\//, "")}`, false, "identity", name)
+          }
         />
       )}
       {state?.phase === "pick" && <PickScreen state={state} mySeat={mySeat} onPick={dispatch} />}
@@ -192,6 +201,8 @@ export function GameApp({
             socketRef.current?.close();
             socketRef.current = null;
             setOnline(false);
+            setLobby(null);
+            setLanHint("");
             setState(null);
           }}
         />
