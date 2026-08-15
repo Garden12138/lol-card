@@ -1,11 +1,11 @@
 import { getGameChampion } from "../data/champions";
 import { equipmentList, inAttackRange, distance } from "./distance";
 import { canUseStrikeThisTurn, cardCanBeStrike, isEquip, isTrick } from "./effects";
-import { player } from "./helpers";
+import { isEnemy, player } from "./helpers";
 import type { Action, GameCard, GameState, PlayerId } from "./types";
 
 function otherAlive(state: GameState, id: PlayerId): PlayerId[] {
-  return state.players.filter((item) => item.alive && item.id !== id).map((item) => item.id);
+  return state.players.filter((item) => item.alive && isEnemy(state, id, item.id)).map((item) => item.id);
 }
 
 function targetsForCard(state: GameState, actor: PlayerId, card: GameCard): PlayerId[] {
@@ -90,14 +90,14 @@ export function legalActions(state: GameState): Action[] {
           }
         }
       }
-      if (def.skillId === "lux-final-spark") {
+      if (def.skillId === "lux-final-spark" || def.skillId === "template-mage") {
         for (const card of seat.hand) {
           for (const targetId of otherAlive(state, actor).filter((id) => inAttackRange(state, actor, id))) {
             actions.push({ type: "useSkill", player: actor, targetId, cardId: card.id });
           }
         }
       }
-      if (def.skillId === "zed-death-mark" && !seat.limitedUsed) {
+      if ((def.skillId === "zed-death-mark" || def.skillId === "template-assassin") && !seat.limitedUsed) {
         actions.push({ type: "useSkill", player: actor });
       }
       if (def.skillId === "leona-solar-flare") {
@@ -105,7 +105,7 @@ export function legalActions(state: GameState): Action[] {
           actions.push({ type: "useSkill", player: actor, targetId });
         }
       }
-      if (def.skillId === "soraka-astral-infusion") {
+      if (def.skillId === "soraka-astral-infusion" || def.skillId === "template-support") {
         for (const card of seat.hand) {
           for (const target of state.players) {
             if (target.alive && target.hp < target.maxHp) {

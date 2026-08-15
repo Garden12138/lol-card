@@ -1,8 +1,8 @@
 import { CARD_NAMES } from "../data/copy";
-import { getGameChampion } from "../data/champions";
+import { getGameChampion, isEndHealSkill, isExecuteStrikeSkill } from "../data/champions";
 import { drawCards, judgeCard } from "./deck";
 import { equipmentList, inAttackRange } from "./distance";
-import { alivePlayers, log, nextAlive, player } from "./helpers";
+import { alivePlayers, isEnemy, log, nextAlive, player, seatCount } from "./helpers";
 import { applyDeath, checkWinner, seatName } from "./win";
 import type {
   EffectFrame,
@@ -105,7 +105,7 @@ export function finishTurn(state: GameState): GameState {
   state.phase = "end";
   const seat = player(state, state.currentPlayer);
   const def = getGameChampion(seat.championId);
-  if (def?.skillId === "garen-perseverance" && seat.alive && !seat.damagedThisTurn && seat.hp < seat.maxHp) {
+  if (def && isEndHealSkill(def.skillId) && seat.alive && !seat.damagedThisTurn && seat.hp < seat.maxHp) {
     seat.hp += 1;
     log(state, `${seatName(state, seat.id)} 发动坚韧，回复 1 点体力。`);
   }
@@ -168,8 +168,9 @@ export function startDying(state: GameState, victimId: PlayerId, killerId?: Play
   const victim = player(state, victimId);
   if (victim.hp > 0 || !victim.alive) return;
   const remaining: PlayerId[] = [];
-  for (let step = 0; step < 4; step += 1) {
-    const id = ((victimId + step) % 4) as PlayerId;
+  const n = seatCount(state);
+  for (let step = 0; step < n; step += 1) {
+    const id = (victimId + step) % n;
     if (player(state, id).alive) remaining.push(id);
   }
   state.stack.push({
@@ -267,7 +268,9 @@ export function startStrike(
   const targetSeat = player(state, target);
   const sourceSeat = player(state, source);
   const darius =
-    getGameChampion(sourceSeat.championId)?.skillId === "darius-noxian-might" && targetSeat.hp <= 2;
+    getGameChampion(sourceSeat.championId) &&
+    isExecuteStrikeSkill(getGameChampion(sourceSeat.championId)!.skillId) &&
+    targetSeat.hp <= 2;
   if (darius || targetSeat.cannotDodgeUntilTurnEnd) {
     log(state, `${seatName(state, target)} 无法闪避此次普攻。`);
     return dealDamage(state, target, source, 1, true);
@@ -431,7 +434,7 @@ function resolveTrick(state: GameState, frame: EffectFrame): void {
   } else if (card.kind === "minionWave" || card.kind === "volley") {
     const others = alivePlayers(state)
       .map((item) => item.id)
-      .filter((id) => id !== source);
+      .filter((id) => isEnemy(state, source, id));
     state.stack.push({
       kind: "aoe",
       card,

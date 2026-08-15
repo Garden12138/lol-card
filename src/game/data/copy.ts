@@ -33,6 +33,9 @@ export const WINNER_NAMES: Record<NonNullable<Winner>, string> = {
   baronSide: "男爵阵营",
   invaders: "入侵者",
   shadow: "影刃",
+  duel: "单挑胜者",
+  blue: "蓝方",
+  red: "红方",
 };
 
 export const SUIT_SYMBOL = {

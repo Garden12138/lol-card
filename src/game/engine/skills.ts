@@ -51,7 +51,8 @@ export function useSkill(
       seat.skillUsedThisTurn = true;
       return state;
     }
-    case "lux-final-spark": {
+    case "lux-final-spark":
+    case "template-mage": {
       if (targetId === undefined || !cardId || !inAttackRange(state, playerId, targetId)) return state;
       const shown = player(state, playerId).hand.find((card) => card.id === cardId);
       if (!shown) return state;
@@ -71,7 +72,8 @@ export function useSkill(
       };
       return state;
     }
-    case "zed-death-mark": {
+    case "zed-death-mark":
+    case "template-assassin": {
       if (seat.limitedUsed) return state;
       seat.hp -= 1;
       seat.damagedThisTurn = true;
@@ -90,7 +92,8 @@ export function useSkill(
       log(state, `${seat.championId} 对 ${player(state, targetId).championId} 发动日炎耀斑。`);
       return state;
     }
-    case "soraka-astral-infusion": {
+    case "soraka-astral-infusion":
+    case "template-support": {
       if (targetId === undefined || !cardId) return state;
       const target = player(state, targetId);
       if (!target.alive || target.hp >= target.maxHp) return state;

@@ -1,10 +1,13 @@
-import { useEffect, useState } from "react";
-import { GAME_TITLE } from "../data/copy";
+import { useEffect, useRef, useState } from "react";
+import { isSfxMuted, playSfx, setSfxMuted, sfxFromLog } from "../audio/sfx";
 import { chooseAiAction } from "../ai/chooseAction";
+import { GAME_TITLE } from "../data/copy";
 import { createMatch } from "../engine/createMatch";
 import { legalActions, reduce } from "../engine/reduce";
-import type { Action, GameCard, GameState, PlayerId } from "../engine/types";
+import type { Action, GameCard, GameMode, GameState, PlayerId } from "../engine/types";
+import { createGameSocket, sendNet } from "../net/client";
 import { CastOverlay } from "./CastOverlay";
+import { LobbyScreen } from "./LobbyScreen";
 import { PickScreen } from "./PickScreen";
 import { ResultScreen } from "./ResultScreen";
 import { TableScreen } from "./TableScreen";
@@ -16,32 +19,91 @@ export function GameApp({
   onExit: () => void;
   initialState?: GameState;
 }) {
-  const [state, setState] = useState<GameState>(() => initialState ?? createMatch(Date.now() >>> 0));
+  const [state, setState] = useState<GameState | null>(initialState ?? null);
+  const [mySeat, setMySeat] = useState<PlayerId>(0);
+  const [online, setOnline] = useState(false);
   const [pendingCardId, setPendingCardId] = useState<string | null>(null);
   const [overlay, setOverlay] = useState<{ championId?: string; card?: GameCard } | null>(null);
+  const [muted, setMuted] = useState(isSfxMuted);
+  const [lanHint, setLanHint] = useState("");
+  const socketRef = useRef<WebSocket | null>(null);
+  const winPlayed = useRef(false);
+  const logLen = useRef(0);
 
   useEffect(() => {
+    return () => socketRef.current?.close();
+  }, []);
+
+  useEffect(() => {
+    if (!state) {
+      winPlayed.current = false;
+      return;
+    }
+    if (state.log.length > logLen.current) {
+      const line = state.log[state.log.length - 1]!;
+      const kind = sfxFromLog(line);
+      if (kind) playSfx(kind);
+    }
+    logLen.current = state.log.length;
+    if (state.winner && !winPlayed.current) {
+      const me = state.players[mySeat];
+      const lost =
+        (state.winner === "duel" && state.winnerSeat !== mySeat) ||
+        (state.winner === "blue" && mySeat % 2 !== 0) ||
+        (state.winner === "red" && mySeat % 2 === 0) ||
+        (state.winner === "baronSide" && me?.identity !== "baron" && me?.identity !== "vanguard") ||
+        (state.winner === "invaders" && me?.identity !== "invader") ||
+        (state.winner === "shadow" && me?.identity !== "shadow");
+      playSfx(lost ? "lose" : "win");
+      winPlayed.current = true;
+    }
+  }, [state, mySeat]);
+
+  useEffect(() => {
+    if (!state || socketRef.current) return;
     if (state.phase === "gameOver") return;
-    if (state.prompt.actor === 0) return;
+    const actor = state.players[state.prompt.actor];
+    if (actor?.controller !== "ai") return;
     const frame = window.requestAnimationFrame(() => {
       setState((current) => {
-        if (current.prompt.actor === 0 || current.phase === "gameOver") return current;
+        if (!current || current.phase === "gameOver") return current;
+        if (current.players[current.prompt.actor]?.controller !== "ai") return current;
         return reduce(current, chooseAiAction(current));
       });
     });
     return () => window.cancelAnimationFrame(frame);
   }, [state]);
 
+  const connect = (url: string, host: boolean, mode: GameMode) => {
+    const socket = createGameSocket(url, {
+      onHello: (playerId) => setMySeat(playerId),
+      onState: (next) => setState(next),
+      onError: (message) => setLanHint(message),
+    });
+    socket.addEventListener("open", () => {
+      setOnline(true);
+      sendNet(socket, { type: "join", name: "召唤师", host, mode, room: "rift" });
+      if (host) setLanHint(`已开房，其他人连接 ${url.replace("ws://", "")} 后由你点「开始对局」`);
+    });
+    socketRef.current = socket;
+  };
+
   const dispatch = (action: Action) => {
+    playSfx("ui");
     setPendingCardId(null);
-    setState((current) => reduce(current, action));
+    const socket = socketRef.current;
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      sendNet(socket, { type: "action", action });
+      return;
+    }
+    setState((current) => (current ? reduce(current, action) : current));
   };
 
   const playCard = (card: GameCard) => {
-    if (state.prompt.actor !== 0) return;
+    if (!state || state.prompt.actor !== mySeat) return;
     if (state.prompt.kind !== "playCard") {
       setOverlay({ card });
-      dispatch({ type: "respond", player: 0, cardId: card.id });
+      dispatch({ type: "respond", player: mySeat, cardId: card.id });
       return;
     }
     const matches = legalActions(state).filter(
@@ -52,12 +114,11 @@ export function GameApp({
       dispatch(matches[0]!);
       return;
     }
-    if (matches.length > 1) {
-      setPendingCardId(card.id);
-    }
+    if (matches.length > 1) setPendingCardId(card.id);
   };
 
   const selectSeat = (id: PlayerId) => {
+    if (!state) return;
     setOverlay({ championId: state.players[id]!.championId || undefined });
     if (!pendingCardId) return;
     const match = legalActions(state).find(
@@ -67,26 +128,73 @@ export function GameApp({
     if (match) dispatch(match);
   };
 
+  const startSolo = (mode: GameMode) => {
+    const seatCount = mode === "duel" ? 2 : 4;
+    setMySeat(0);
+    setState(
+      createMatch({
+        mode,
+        seed: Date.now() >>> 0,
+        seatCount,
+        controllers: Array.from({ length: seatCount }, (_, index) => (index === 0 ? "human" : "ai")),
+      }),
+    );
+  };
+
   return (
     <div className="rift-shell">
       <header className="rift-header">
         <strong>{GAME_TITLE}</strong>
-        <button type="button" onClick={onExit}>
-          返回鉴赏馆
-        </button>
+        <div className="rift-header__tools">
+          <button
+            type="button"
+            onClick={() => {
+              const next = !muted;
+              setSfxMuted(next);
+              setMuted(next);
+            }}
+          >
+            {muted ? "音效：关" : "音效：开"}
+          </button>
+          {online && !state && mySeat === 0 && (
+            <button type="button" onClick={() => sendNet(socketRef.current!, { type: "start" })}>
+              开始对局
+            </button>
+          )}
+          <button type="button" onClick={onExit}>
+            返回鉴赏馆
+          </button>
+        </div>
       </header>
-      {state.phase === "pick" && <PickScreen state={state} onPick={dispatch} />}
-      {state.phase !== "pick" && state.phase !== "gameOver" && (
+      {!state && (
+        <LobbyScreen
+          lanHint={lanHint}
+          onSolo={startSolo}
+          onHost={(mode) => connect("ws://127.0.0.1:8788", true, mode)}
+          onJoin={(host) => connect(`ws://${host.replace(/^ws:\/\//, "")}`, false, "identity")}
+        />
+      )}
+      {state?.phase === "pick" && <PickScreen state={state} mySeat={mySeat} onPick={dispatch} />}
+      {state && state.phase !== "pick" && state.phase !== "gameOver" && (
         <TableScreen
           state={state}
+          mySeat={mySeat}
           selectedTarget={null}
           onPlayCard={playCard}
           onAction={dispatch}
           onSelectSeat={selectSeat}
         />
       )}
-      {state.phase === "gameOver" && (
-        <ResultScreen state={state} onReplay={() => setState(createMatch(Date.now() >>> 0))} />
+      {state?.phase === "gameOver" && (
+        <ResultScreen
+          state={state}
+          onReplay={() => {
+            socketRef.current?.close();
+            socketRef.current = null;
+            setOnline(false);
+            setState(null);
+          }}
+        />
       )}
       {overlay && (
         <CastOverlay
@@ -97,7 +205,7 @@ export function GameApp({
       )}
       <p className="rift-disclaimer">
         峡谷身份战是非官方粉丝作品，规则受经典身份卡牌启发，未获得 Riot Games
-        或任何卡牌厂商授权。单机本地对局，不支持联机。
+        或任何卡牌厂商授权。局域网开房需使用 npm run dev:lan。
       </p>
     </div>
   );

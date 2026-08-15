@@ -1,4 +1,4 @@
-import { player } from "./helpers";
+import { isEnemy, player } from "./helpers";
 import type { GameState, PlayerId } from "./types";
 
 export function seatDistance(state: GameState, from: PlayerId, to: PlayerId): number {
@@ -28,7 +28,12 @@ export function attackRange(state: GameState, id: PlayerId): number {
 }
 
 export function inAttackRange(state: GameState, from: PlayerId, to: PlayerId): boolean {
-  return from !== to && player(state, to).alive && distance(state, from, to) <= attackRange(state, from);
+  return (
+    from !== to &&
+    player(state, to).alive &&
+    isEnemy(state, from, to) &&
+    distance(state, from, to) <= attackRange(state, from)
+  );
 }
 
 export function equipmentList(state: GameState, id: PlayerId) {

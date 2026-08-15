@@ -3,7 +3,8 @@ import type { GameCard, GameState } from "../../src/game/engine/types";
 
 export function pickAll(state: GameState): GameState {
   let next = state;
-  for (let i = 0; i < 4; i += 1) {
+  const seats = next.players.length;
+  for (let i = 0; i < seats; i += 1) {
     const actor = next.prompt.actor;
     const championId = next.players[actor]!.candidates[0]!;
     next = reduce(next, { type: "pickChampion", player: actor, championId });

@@ -1,5 +1,14 @@
-export type PlayerId = 0 | 1 | 2 | 3;
+export type PlayerId = number;
 export type Identity = "baron" | "vanguard" | "invader" | "shadow";
+export type GameMode = "identity" | "duel" | "team";
+export type Controller = "human" | "ai";
+
+export interface MatchConfig {
+  mode: GameMode;
+  seed: number;
+  seatCount: 2 | 4;
+  controllers: Controller[];
+}
 export type Suit = "spade" | "heart" | "club" | "diamond";
 export type Phase =
   | "pick"
@@ -40,7 +49,13 @@ export type SkillId =
   | "lux-final-spark"
   | "zed-death-mark"
   | "leona-solar-flare"
-  | "soraka-astral-infusion";
+  | "soraka-astral-infusion"
+  | "template-tank"
+  | "template-fighter"
+  | "template-assassin"
+  | "template-mage"
+  | "template-marksman"
+  | "template-support";
 
 export type SkillKind = "locked" | "active" | "limited";
 
@@ -75,6 +90,7 @@ export interface PlayerState {
   unlimitedStrikeThisTurn: boolean;
   alive: boolean;
   candidates: string[];
+  controller: Controller;
 }
 
 export type PromptKind =
@@ -155,6 +171,7 @@ export type PendingChoice =
     };
 
 export interface GameState {
+  config: MatchConfig;
   rngSeed: number;
   rngState: number;
   phase: Phase;
@@ -164,7 +181,8 @@ export interface GameState {
   discard: GameCard[];
   prompt: Prompt;
   log: string[];
-  winner: "baronSide" | "invaders" | "shadow" | null;
+  winner: "baronSide" | "invaders" | "shadow" | "duel" | "blue" | "red" | null;
+  winnerSeat?: PlayerId;
   strikeUsedThisTurn: boolean;
   skipPlayPhase: boolean;
   stack: EffectFrame[];

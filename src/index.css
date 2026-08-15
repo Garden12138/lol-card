@@ -1685,10 +1685,33 @@ button:disabled {
   gap: 16px;
 }
 
-.rift-header {
+.rift-header__tools {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.rift-lobby {
+  display: grid;
+  gap: 16px;
+}
+
+.rift-lobby__row,
+.rift-lobby__join {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: end;
+}
+
+.rift-lobby input {
+  min-height: 40px;
+  margin-left: 8px;
+  padding: 8px 10px;
+  border: 1px solid rgba(198, 169, 107, 0.4);
+  border-radius: 8px;
+  background: #0d1d2c;
+  color: #f4ead7;
 }
 
 .rift-header button,

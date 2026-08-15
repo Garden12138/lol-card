@@ -31,12 +31,14 @@ function alive(player: Partial<PlayerState> & Pick<PlayerState, "id" | "identity
     unlimitedStrikeThisTurn: false,
     alive: true,
     candidates: [],
+    controller: "ai",
     ...player,
   };
 }
 
 function baseState(players: PlayerState[]): GameState {
   return {
+    config: { mode: "identity", seed: 1, seatCount: 4, controllers: ["human", "ai", "ai", "ai"] },
     rngSeed: 1,
     rngState: 1,
     phase: "play",
@@ -77,8 +79,8 @@ describe("createMatch", () => {
     expect(state.players.filter((p) => p.identity === "baron")).toHaveLength(1);
     expect(state.phase).toBe("pick");
     const allCandidates = state.players.flatMap((p) => p.candidates);
-    expect(allCandidates).toHaveLength(8);
-    expect(new Set(allCandidates).size).toBe(8);
+    expect(allCandidates).toHaveLength(12);
+    expect(new Set(allCandidates).size).toBe(12);
     expect(allCandidates.every((id) => GAME_CHAMPIONS.some((c) => c.championId === id))).toBe(
       true,
     );

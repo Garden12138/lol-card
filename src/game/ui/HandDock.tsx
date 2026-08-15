@@ -1,22 +1,24 @@
 import { CARD_NAMES, SUIT_SYMBOL } from "../data/copy";
 import { legalActions } from "../engine/legal";
-import type { GameCard, GameState } from "../engine/types";
+import type { GameCard, GameState, PlayerId } from "../engine/types";
 import { SpellCardFace } from "./SpellCardFace";
 
 export function HandDock({
   state,
+  mySeat,
   onPlay,
 }: {
   state: GameState;
+  mySeat: PlayerId;
   onPlay: (card: GameCard) => void;
 }) {
-  const seat = state.players[0]!;
+  const seat = state.players[mySeat]!;
   const legalIds = new Set(
     legalActions(state)
-      .filter((action) => action.type === "playCard" && action.player === 0)
+      .filter((action) => action.type === "playCard" && action.player === mySeat)
       .map((action) => (action.type === "playCard" ? action.cardId : "")),
   );
-  const respondIds = new Set(state.prompt.actor === 0 ? state.prompt.legalCardIds : []);
+  const respondIds = new Set(state.prompt.actor === mySeat ? state.prompt.legalCardIds : []);
   return (
     <div className="rift-hand" aria-label="手牌">
       {seat.hand.map((card) => {

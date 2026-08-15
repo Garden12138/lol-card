@@ -1,8 +1,12 @@
+import { getGameChampion } from "../data/champions";
 import { legalActions } from "../engine/legal";
-import { player } from "../engine/helpers";
+import { isEnemy, player } from "../engine/helpers";
 import type { Action, GameState, PlayerId } from "../engine/types";
 
 function enemies(state: GameState, me: PlayerId): PlayerId[] {
+  if (state.config.mode !== "identity") {
+    return state.players.filter((item) => isEnemy(state, me, item.id)).map((item) => item.id);
+  }
   const mine = player(state, me);
   const baron = state.players.find((item) => item.identity === "baron")!;
   if (mine.identity === "invader" || mine.identity === "shadow") {
@@ -69,11 +73,20 @@ export function chooseAiAction(state: GameState): Action {
     if (seat.hp === 1 && heals[0]) return heals[0];
 
     const foe = enemies(state, actor);
+    const def = getGameChampion(seat.championId);
     const skill = options.find((action) => {
       if (action.type !== "useSkill") return false;
-      const champ = seat.championId;
-      if (!action.targetId) return champ === "Zed";
-      return foe.includes(action.targetId) && (champ === "Leona" || champ === "Ahri" || champ === "Darius");
+      if (!action.targetId) {
+        return def?.skillId === "zed-death-mark" || def?.skillId === "template-assassin";
+      }
+      return (
+        foe.includes(action.targetId) &&
+        (def?.skillId === "leona-solar-flare" ||
+          def?.skillId === "ahri-charm" ||
+          def?.skillId === "darius-noxian-might" ||
+          def?.skillId === "template-fighter" ||
+          def?.skillId === "template-mage")
+      );
     });
     if (skill) return skill;
 

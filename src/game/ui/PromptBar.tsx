@@ -1,15 +1,17 @@
 import { legalActions } from "../engine/legal";
-import type { Action, GameState } from "../engine/types";
+import type { Action, GameState, PlayerId } from "../engine/types";
 
 export function PromptBar({
   state,
+  mySeat,
   onAction,
 }: {
   state: GameState;
+  mySeat: PlayerId;
   onAction: (action: Action) => void;
 }) {
   const options = legalActions(state).filter((action) => {
-    if (state.prompt.actor !== 0) return false;
+    if (state.prompt.actor !== mySeat) return false;
     return (
       action.type === "endPlay" ||
       action.type === "respond" ||
