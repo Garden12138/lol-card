@@ -22,6 +22,7 @@ import {
   toCardEditionKey,
   type UrlState,
 } from "./lib/urlState";
+import { FightApp } from "./fight/FightApp";
 import { GameApp } from "./game/ui/GameApp";
 import type { CardEditionKey, ChampionCard, ChampionTag, SkinEdition } from "./types/cards";
 
@@ -160,6 +161,10 @@ export function App() {
     return <GameApp onExit={() => setMode("gallery")} />;
   }
 
+  if (mode === "fight") {
+    return <FightApp onExit={() => setMode("gallery")} />;
+  }
+
   return (
     <div className="site-shell">
       <header className="site-header">
@@ -177,6 +182,9 @@ export function App() {
             <a href="#comparison">对比</a>
             <button type="button" className="site-nav__play" onClick={() => setMode("play")}>
               进入对局
+            </button>
+            <button type="button" className="site-nav__play" onClick={() => setMode("fight")}>
+              格斗对战
             </button>
           </nav>
           <div className="site-header__meta">

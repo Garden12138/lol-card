@@ -134,4 +134,15 @@ describe("edition key helpers", () => {
     expect(serialized).toContain("mode=play");
     expect(parseUrlState(serialized, champions).mode).toBe("play");
   });
+
+  it("round-trips fight mode", () => {
+    const serialized = serializeUrlState({
+      championId: "Ahri",
+      skinNum: 0,
+      compareKeys: [],
+      mode: "fight",
+    });
+    expect(serialized).toContain("mode=fight");
+    expect(parseUrlState(serialized, champions).mode).toBe("fight");
+  });
 });
