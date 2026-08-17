@@ -1,7 +1,8 @@
 import { getGameChampion } from "../data/champions";
+import { equipSlot, isEquip, isTrick } from "../engine/effects";
 import { legalActions } from "../engine/legal";
-import { isEnemy, player } from "../engine/helpers";
-import type { Action, GameState, PlayerId } from "../engine/types";
+import { isAlly, isEnemy, player } from "../engine/helpers";
+import type { Action, GameCard, GameState, PlayerId } from "../engine/types";
 
 function enemies(state: GameState, me: PlayerId): PlayerId[] {
   if (state.config.mode !== "identity") {
@@ -19,8 +20,26 @@ function enemies(state: GameState, me: PlayerId): PlayerId[] {
     .map((item) => item.id);
 }
 
-function pick<T>(items: T[], fallback: T): T {
-  return items[0] ?? fallback;
+function handCard(state: GameState, actor: PlayerId, cardId?: string): GameCard | undefined {
+  if (!cardId) return undefined;
+  return player(state, actor).hand.find((card) => card.id === cardId);
+}
+
+function keepScore(card: GameCard): number {
+  if (card.kind === "heal" || card.kind === "dodge") return 3;
+  if (card.kind === "strike") return 2;
+  if (isEquip(card.kind)) return 1;
+  return 0;
+}
+
+function pickChampion(state: GameState, options: Action[]): Action {
+  const ranked = options.filter((action) => action.type === "pickChampion");
+  const best = ranked.find((action) => {
+    if (action.type !== "pickChampion") return false;
+    const def = getGameChampion(action.championId);
+    return def && (def.maxHp === 4 || !def.skillId.startsWith("template-"));
+  });
+  return best ?? options[0]!;
 }
 
 export function chooseAiAction(state: GameState): Action {
@@ -32,13 +51,13 @@ export function chooseAiAction(state: GameState): Action {
   const seat = player(state, actor);
   const kind = state.prompt.kind;
 
-  if (kind === "pickChampion") {
-    return options[0]!;
-  }
+  if (kind === "pickChampion") return pickChampion(state, options);
 
   if (kind === "dyingHeal") {
+    const victim = state.prompt.source;
     const heal = options.find((action) => action.type === "respond" && action.cardId);
-    return heal ?? options[0]!;
+    if (victim !== undefined && heal && isAlly(state, actor, victim)) return heal;
+    return options.find((action) => action.type === "respond" && !action.cardId) ?? options[0]!;
   }
 
   if (
@@ -48,8 +67,8 @@ export function chooseAiAction(state: GameState): Action {
     kind === "respondVolley"
   ) {
     const play = options.find((action) => action.type === "respond" && action.cardId);
-    if (seat.hp <= 1 && play) return play;
-    if (play && seat.hp <= 2) return play;
+    const dodges = seat.hand.filter((card) => card.kind === "dodge").length;
+    if (play && (seat.hp <= 2 || dodges >= 2)) return play;
     return options.find((action) => action.type === "respond" && !action.cardId) ?? options[0]!;
   }
 
@@ -59,55 +78,104 @@ export function chooseAiAction(state: GameState): Action {
     return options.find((action) => action.type === "respond" && !action.cardId) ?? options[0]!;
   }
 
-  if (kind === "respondLux" || kind === "chooseCardInArea" || kind === "discardToHp") {
+  if (kind === "discardToHp") {
+    const discards = options.filter((action) => action.type === "discard");
+    const best = discards.sort((a, b) => {
+      if (a.type !== "discard" || b.type !== "discard") return 0;
+      const score = (ids: string[]) =>
+        ids.reduce((sum, id) => sum + keepScore(seat.hand.find((card) => card.id === id) ?? { id, kind: "strike", suit: "spade", rank: 1 }), 0);
+      return score(a.cardIds) - score(b.cardIds);
+    })[0];
+    return best ?? options[0]!;
+  }
+
+  if (kind === "respondLux" || kind === "chooseCardInArea") {
     return options[0]!;
   }
 
   if (kind === "playCard") {
-    const heals = options.filter(
-      (action) =>
-        action.type === "playCard" &&
-        seat.hand.find((card) => card.id === action.cardId)?.kind === "heal" &&
-        (action.targetId === actor || action.targetId === undefined),
-    );
-    if (seat.hp === 1 && heals[0]) return heals[0];
-
     const foe = enemies(state, actor);
     const def = getGameChampion(seat.championId);
+
+    const equip = options.find((action) => {
+      if (action.type !== "playCard") return false;
+      const card = handCard(state, actor, action.cardId);
+      if (!card || !isEquip(card.kind)) return false;
+      const slot = equipSlot(card.kind);
+      return slot !== undefined && !seat.equipment[slot];
+    });
+    if (equip) return equip;
+
+    const heal = options.find((action) => {
+      if (action.type !== "playCard") return false;
+      const card = handCard(state, actor, action.cardId);
+      if (card?.kind !== "heal") return false;
+      const target = action.targetId ?? actor;
+      const dest = player(state, target);
+      if (dest.hp >= dest.maxHp) return false;
+      if (target === actor) return seat.hp <= 2;
+      return state.config.mode === "team" && isAlly(state, actor, target) && dest.hp <= 2;
+    });
+    if (heal) return heal;
+
+    const trickKinds = new Set(["stun", "duel", "plunder", "smite"]);
+    const trick = options.find((action) => {
+      if (action.type !== "playCard" || action.targetId === undefined) return false;
+      const card = handCard(state, actor, action.cardId);
+      return card !== undefined && trickKinds.has(card.kind) && foe.includes(action.targetId);
+    });
+    if (trick) return trick;
+
+    const skillIds = new Set([
+      "zed-death-mark",
+      "template-assassin",
+      "leona-solar-flare",
+      "ahri-charm",
+      "lux-final-spark",
+      "template-mage",
+      "thresh-death-sentence",
+      "soraka-astral-infusion",
+      "template-support",
+    ]);
     const skill = options.find((action) => {
-      if (action.type !== "useSkill") return false;
-      if (!action.targetId) {
-        return def?.skillId === "zed-death-mark" || def?.skillId === "template-assassin";
+      if (action.type !== "useSkill" || !def || !skillIds.has(def.skillId)) return false;
+      if (!action.targetId) return def.skillId === "zed-death-mark" || def.skillId === "template-assassin";
+      if (def.skillId === "soraka-astral-infusion" || def.skillId === "template-support") {
+        return isAlly(state, actor, action.targetId) || action.targetId === actor;
       }
-      return (
-        foe.includes(action.targetId) &&
-        (def?.skillId === "leona-solar-flare" ||
-          def?.skillId === "ahri-charm" ||
-          def?.skillId === "darius-noxian-might" ||
-          def?.skillId === "template-fighter" ||
-          def?.skillId === "template-mage")
-      );
+      return foe.includes(action.targetId);
     });
     if (skill) return skill;
 
-    const strike = options.find((action) => {
-      if (action.type !== "playCard" || action.targetId === undefined) return false;
-      const card = seat.hand.find((item) => item.id === action.cardId);
-      return (card?.kind === "strike" || card?.kind === "dodge") && foe.includes(action.targetId);
-    });
-    if (strike) return strike;
+    const strikes = options
+      .filter((action) => {
+        if (action.type !== "playCard" || action.targetId === undefined) return false;
+        const card = handCard(state, actor, action.cardId);
+        if (card?.kind !== "strike" && card?.kind !== "dodge") return false;
+        if (!foe.includes(action.targetId)) return false;
+        const target = player(state, action.targetId);
+        if (seat.identity === "baron" && state.config.mode === "identity" && target.hp <= 1 && target.identity !== "baron") {
+          return false;
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        if (a.type !== "playCard" || b.type !== "playCard") return 0;
+        return player(state, a.targetId!).hp - player(state, b.targetId!).hp;
+      });
+    if (strikes[0]) return strikes[0];
 
-    const trick = options.find((action) => {
+    const filler = options.find((action) => {
       if (action.type !== "playCard") return false;
-      const card = seat.hand.find((item) => item.id === action.cardId);
+      const card = handCard(state, actor, action.cardId);
       if (card?.kind === "supply") return seat.hand.length <= 3;
-      return card?.kind === "minionWave" || card?.kind === "volley";
+      return card?.kind === "minionWave" || card?.kind === "volley" || (card !== undefined && isTrick(card.kind));
     });
-    if (trick) return trick;
+    if (filler) return filler;
 
     const end = options.find((action) => action.type === "endPlay");
     if (end) return end;
   }
 
-  return pick(options, options[0]!);
+  return options[0]!;
 }

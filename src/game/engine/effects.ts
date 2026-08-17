@@ -2,13 +2,14 @@ import { CARD_NAMES } from "../data/copy";
 import { getGameChampion, isEndHealSkill, isExecuteStrikeSkill } from "../data/champions";
 import { drawCards, judgeCard } from "./deck";
 import { equipmentList, inAttackRange } from "./distance";
-import { alivePlayers, isEnemy, log, nextAlive, player, seatCount } from "./helpers";
+import { alivePlayers, canOfferDyingHeal, isEnemy, log, nextAlive, player, seatCount } from "./helpers";
 import { applyDeath, checkWinner, seatName } from "./win";
 import type {
   EffectFrame,
   GameCard,
   GameState,
   PlayerId,
+  PlayerState,
   Prompt,
 } from "./types";
 
@@ -34,7 +35,13 @@ export function isEquip(kind: string): kind is keyof typeof EQUIP {
   return kind in EQUIP;
 }
 
+export function equipSlot(kind: string): keyof PlayerState["equipment"] | undefined {
+  if (!isEquip(kind)) return undefined;
+  return EQUIP[kind];
+}
+
 export function playPhasePrompt(state: GameState): void {
+  if (state.winner) return;
   state.phase = "play";
   state.prompt = {
     kind: "playCard",
@@ -171,7 +178,7 @@ export function startDying(state: GameState, victimId: PlayerId, killerId?: Play
   const n = seatCount(state);
   for (let step = 0; step < n; step += 1) {
     const id = (victimId + step) % n;
-    if (player(state, id).alive) remaining.push(id);
+    if (canOfferDyingHeal(state, id, victimId)) remaining.push(id);
   }
   state.stack.push({
     kind: "dying",
@@ -388,7 +395,10 @@ function askBarrier(state: GameState): void {
 
 export function respondBarrier(state: GameState, actor: PlayerId, cardId?: string): GameState {
   const frame = state.stack[state.stack.length - 1];
-  if (!frame || frame.kind !== "trick" || state.prompt.actor !== actor) return state;
+  if (!frame || frame.kind !== "trick" || state.prompt.actor !== actor) {
+    if (!state.winner) playPhasePrompt(state);
+    return state;
+  }
   if (cardId) {
     const card = discardFromHand(state, actor, cardId);
     if (!card || card.kind !== "barrier") return state;
@@ -590,7 +600,7 @@ export function handleLuxRespond(state: GameState, actor: PlayerId, cardId?: str
     dealDamage(state, actor, pending.source, 1, false);
   }
   state.pending = null;
-  playPhasePrompt(state);
+  if (!state.winner) resumeAfterStack(state);
   return state;
 }
 

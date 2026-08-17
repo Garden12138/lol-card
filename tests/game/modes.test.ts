@@ -65,4 +65,72 @@ describe("duel and team modes", () => {
     next = applyDeath(next, 3, 0);
     expect(next.winner).toBe("blue");
   });
+
+  it("allows healing an injured teammate but not an enemy in 2v2", () => {
+    const state = pickAll(
+      createMatch({
+        mode: "team",
+        seed: 7,
+        seatCount: 4,
+        controllers: ["human", "ai", "ai", "ai"],
+      }),
+    );
+    state.currentPlayer = 0;
+    state.phase = "play";
+    state.prompt = {
+      kind: "playCard",
+      actor: 0,
+      legalCardIds: [],
+      legalTargetIds: [],
+      canCancel: false,
+      message: "出牌",
+    };
+    state.players[0]!.hand = [card({ id: "h1", kind: "heal", suit: "heart" })];
+    state.players[2]!.hp = 2;
+    state.players[2]!.maxHp = 4;
+    state.players[1]!.hp = 2;
+    state.players[1]!.maxHp = 4;
+    const actions = legalActions(state);
+    expect(
+      actions.some((action) => action.type === "playCard" && action.cardId === "h1" && action.targetId === 2),
+    ).toBe(true);
+    expect(
+      actions.some((action) => action.type === "playCard" && action.cardId === "h1" && action.targetId === 1),
+    ).toBe(false);
+  });
+
+  it("does not ask the duel opponent to save a dying player", () => {
+    const state = pickAll(
+      createMatch({
+        mode: "duel",
+        seed: 8,
+        seatCount: 2,
+        controllers: ["human", "ai"],
+      }),
+    );
+    state.currentPlayer = 0;
+    state.phase = "play";
+    state.prompt = {
+      kind: "playCard",
+      actor: 0,
+      legalCardIds: [],
+      legalTargetIds: [],
+      canCancel: false,
+      message: "出牌",
+    };
+    state.players[0]!.championId = "Garen";
+    state.players[1]!.championId = "Lux";
+    state.players[0]!.equipment = {};
+    state.players[1]!.equipment = {};
+    state.players[0]!.hand = [
+      card({ id: "s1", kind: "strike" }),
+      card({ id: "h1", kind: "heal", suit: "heart" }),
+    ];
+    state.players[1]!.hand = [];
+    state.players[1]!.hp = 1;
+    const asked = reduce(state, { type: "playCard", player: 0, cardId: "s1", targetId: 1 });
+    const after = reduce(asked, { type: "respond", player: 1 });
+    expect(after.prompt.kind).not.toBe("dyingHeal");
+    expect(after.players[1]!.alive).toBe(false);
+  });
 });

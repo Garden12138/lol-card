@@ -14,8 +14,13 @@ function targetsForCard(state: GameState, actor: PlayerId, card: GameCard): Play
     return others.filter((id) => inAttackRange(state, actor, id));
   }
   if (card.kind === "heal") {
-    const self = player(state, actor);
-    return self.hp < self.maxHp ? [actor] : [];
+    return state.players
+      .filter((item) => {
+        if (!item.alive || item.hp >= item.maxHp) return false;
+        if (state.config.mode === "team") return !isEnemy(state, actor, item.id) || item.id === actor;
+        return item.id === actor;
+      })
+      .map((item) => item.id);
   }
   if (isEquip(card.kind)) return [actor];
   if (card.kind === "supply" || card.kind === "minionWave" || card.kind === "volley") return [actor];
@@ -128,6 +133,11 @@ export function legalActions(state: GameState): Action[] {
     if (ids.length > need) {
       actions.push({ type: "discard", player: actor, cardIds: ids.slice(-need) });
     }
+    const ranked = [...seat.hand].sort((a, b) => discardKeepScore(a) - discardKeepScore(b));
+    const preferred = ranked.slice(0, need).map((card) => card.id);
+    if (!actions.some((action) => action.type === "discard" && JSON.stringify(action.cardIds) === JSON.stringify(preferred))) {
+      actions.push({ type: "discard", player: actor, cardIds: preferred });
+    }
     return actions;
   }
 
@@ -150,4 +160,11 @@ export function legalActions(state: GameState): Action[] {
     }
   }
   return actions;
+}
+
+function discardKeepScore(card: GameCard): number {
+  if (card.kind === "heal" || card.kind === "dodge") return 3;
+  if (card.kind === "strike") return 2;
+  if (isEquip(card.kind)) return 1;
+  return 0;
 }

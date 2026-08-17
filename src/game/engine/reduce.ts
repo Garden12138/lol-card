@@ -21,10 +21,11 @@ import {
   startTrick,
   takeCardFromHand,
 } from "./effects";
-import { cloneState, player } from "./helpers";
+import { cloneState, log, player } from "./helpers";
 import { useSkill } from "./skills";
 import type { Action, GameState } from "./types";
 import { legalActions } from "./legal";
+import { seatName } from "./win";
 
 function isLegal(state: GameState, action: Action): boolean {
   return legalActions(state).some((item) => JSON.stringify(item) === JSON.stringify(action));
@@ -84,6 +85,7 @@ export function reduce(state: GameState, action: Action): GameState {
       next.discard.push(card);
       const target = action.targetId ?? action.player;
       recover(next, target, 1);
+      log(next, `${seatName(next, action.player)} 使用治疗，${seatName(next, target)} 回复 1 点体力。`);
       return next;
     }
     if (isEquip(card.kind)) {
