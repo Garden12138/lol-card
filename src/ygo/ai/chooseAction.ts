@@ -4,6 +4,7 @@ import type { Action, DuelState } from "../engine/types";
 function score(action: Action): number {
   if (action.type === "activate" && action.fusionId) return 100;
   if (action.type === "synchroSummon") return 95;
+  if (action.type === "xyzSummon") return 94;
   if (action.type === "attack" && action.targetUid === "direct") return 80;
   if (action.type === "attack") return 60;
   if (action.type === "activate") return 50;

@@ -1,5 +1,5 @@
 import { getCardDef } from "../data/cards";
-import { detachFromZone, emptyZones, log, occupiedMonsters, sendToGy } from "./helpers";
+import { detachFromZone, emptyZones, isExtraMonster, log, occupiedMonsters, sendToGy } from "./helpers";
 import { placeMonster } from "./summon";
 import type { Action, CardInstance, DuelState, PlayerState } from "./types";
 
@@ -23,7 +23,10 @@ function combinations<T>(items: T[], k: number): T[][] {
 }
 
 function faceUp(player: PlayerState): CardInstance[] {
-  return occupiedMonsters(player).filter((card) => card.face === "up");
+  return occupiedMonsters(player).filter((card) => {
+    if (card.face !== "up") return false;
+    return !isExtraMonster(getCardDef(card.defId).monsterType);
+  });
 }
 
 function isTuner(card: CardInstance): boolean {

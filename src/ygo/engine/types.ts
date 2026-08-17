@@ -13,7 +13,7 @@ export type Race =
   | "Fairy"
   | "Plant";
 export type CardKind = "monster" | "spell" | "trap";
-export type MonsterType = "normal" | "effect" | "fusion" | "synchro";
+export type MonsterType = "normal" | "effect" | "fusion" | "synchro" | "xyz";
 export type SpellType = "normal" | "quick" | "continuous" | "equip" | "field";
 export type TrapType = "normal" | "continuous";
 export type SpellSpeed = 1 | 2;
@@ -34,6 +34,8 @@ export type ResolveId =
   | "setFromDeck"
   | "equipBuff"
   | "destroySpellTrap"
+  | "detachDestroy"
+  | "detachDamage"
   | "none";
 
 export type PromptKind =
@@ -56,6 +58,9 @@ export interface CardDef {
   race?: Race;
   monsterType?: MonsterType;
   tuner?: boolean;
+  rank?: number;
+  xyzCount?: 2;
+  detachCost?: number;
   fusionMaterials?: [string, string];
   spellType?: SpellType;
   trapType?: TrapType;
@@ -77,6 +82,7 @@ export interface CardInstance {
   atkBuff: number;
   protectedUntilEnd: boolean;
   equippedTo?: string;
+  overlays?: CardInstance[];
 }
 
 export interface PlayerState {
@@ -139,6 +145,7 @@ export type Action =
     }
   | { type: "attack"; attackerUid: string; targetUid: string | "direct" }
   | { type: "synchroSummon"; extraId: string; materials: string[]; zone: number }
+  | { type: "xyzSummon"; extraId: string; materials: string[]; zone: number }
   | { type: "respondPass" }
   | { type: "nextPhase" };
 

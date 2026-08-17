@@ -15,6 +15,7 @@ describe("峡谷决斗大厅", () => {
     expect(screen.getByRole("button", { name: /德玛西亚军势/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /皮城工坊/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /暗影虚空/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /符文叠层/ })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /德玛西亚军势/ }));
     expect(onDeck).toHaveBeenCalledWith("demacia");

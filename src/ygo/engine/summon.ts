@@ -2,6 +2,7 @@ import { getCardDef } from "../data/cards";
 import {
   emptyZones,
   findOnField,
+  isExtraMonster,
   log,
   occupiedMonsters,
   removeFromHand,
@@ -44,7 +45,7 @@ export function canNormalSummon(state: DuelState, playerId: PlayerId, uid: strin
   const card = player.hand.find((item) => item.uid === uid);
   if (!card) return false;
   const def = getCardDef(card.defId);
-  if (def.kind !== "monster" || def.monsterType === "fusion" || def.monsterType === "synchro") return false;
+  if (def.kind !== "monster" || isExtraMonster(def.monsterType)) return false;
   const need = tributeRequired(def.level ?? 1);
   if (tributes.length !== need) return false;
   const field = occupiedMonsters(player);

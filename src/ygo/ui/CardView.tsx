@@ -34,7 +34,10 @@ export function CardView({
           <strong>{def.name}</strong>
           {atk !== null ? (
             <small>
-              {def.level}★ {atk}/{defStat} {card.position === "def" ? "守" : "攻"}
+              {def.monsterType === "xyz"
+                ? `R${def.rank} ${atk}/${defStat} 素材 ${card.overlays?.length ?? 0}`
+                : `${def.level}★ ${atk}/${defStat}`}{" "}
+              {card.position === "def" ? "守" : "攻"}
             </small>
           ) : (
             <small>{def.kind === "spell" ? "魔法" : "陷阱"}</small>

@@ -64,7 +64,14 @@ export function removeFromHand(player: PlayerState, uid: string): CardInstance |
   return player.hand.splice(index, 1)[0] ?? null;
 }
 
+export function dumpOverlays(player: PlayerState, card: CardInstance): void {
+  const overlays = card.overlays ?? [];
+  card.overlays = [];
+  for (const overlay of overlays) sendToGy(player, overlay);
+}
+
 export function sendToGy(player: PlayerState, card: CardInstance): void {
+  dumpOverlays(player, card);
   card.face = "up";
   card.equippedTo = undefined;
   player.gy.unshift(card);
@@ -77,6 +84,10 @@ export function detachFromZone(state: DuelState, uid: string): CardInstance | nu
   else if (located.zone === "spell") located.player.spells[located.index] = null;
   else located.player.field = null;
   return located.card;
+}
+
+export function isExtraMonster(type: string | undefined): boolean {
+  return type === "fusion" || type === "synchro" || type === "xyz";
 }
 
 export function tributeRequired(level: number): number {

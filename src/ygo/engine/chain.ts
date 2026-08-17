@@ -2,6 +2,7 @@ import { getCardDef } from "../data/cards";
 import { applyResolve, consumeActivatedCard } from "./effects";
 import { log } from "./helpers";
 import { resolveBattle } from "./battle";
+import { detachOverlays } from "./xyz";
 import type { Action, DuelState } from "./types";
 
 export function pushChain(state: DuelState, action: Extract<Action, { type: "activate" }>): void {
@@ -11,6 +12,7 @@ export function pushChain(state: DuelState, action: Extract<Action, { type: "act
       throw new Error("missing card");
     })();
   const def = getCardDef(card.defId);
+  if ((def.detachCost ?? 0) > 0) detachOverlays(state, card, def.detachCost ?? 0);
   state.chain.push({
     uid: action.uid,
     defId: card.defId,

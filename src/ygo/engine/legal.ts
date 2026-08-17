@@ -1,7 +1,8 @@
 import { getCardDef } from "../data/cards";
-import { computedAtk, emptyZones, isMainPhase, occupiedMonsters, occupiedSpells, other, tributeRequired } from "./helpers";
+import { computedAtk, emptyZones, isExtraMonster, isMainPhase, occupiedMonsters, occupiedSpells, other, tributeRequired } from "./helpers";
 import { canNormalSummon } from "./summon";
 import { synchroOptions } from "./synchro";
+import { xyzOptions } from "./xyz";
 import type { Action, CardInstance, DuelState, PlayerState } from "./types";
 
 function combinations<T>(items: T[], k: number): T[][] {
@@ -29,7 +30,7 @@ function summonActions(state: DuelState, player: PlayerState, type: "normalSummo
   let zones = emptyZones(player.monsters);
   for (const card of player.hand) {
     const def = getCardDef(card.defId);
-    if (def.kind !== "monster" || def.monsterType === "fusion" || def.monsterType === "synchro") continue;
+    if (def.kind !== "monster" || isExtraMonster(def.monsterType)) continue;
     const need = tributeRequired(def.level ?? 1);
     const tributeSets = need === 0 ? [[]] : combinations(monsters, need);
     for (const tributes of tributeSets) {
@@ -90,7 +91,10 @@ function activateTargets(state: DuelState, player: PlayerState, card: CardInstan
     case "damageLp":
     case "negateAttack":
     case "fusionSummon":
+    case "detachDamage":
       return [[]];
+    case "detachDestroy":
+      return occupiedMonsters(foe).filter((m) => m.face === "up").map((m) => [m.uid]);
     case "destroyTarget": {
       const cap = def.resolveValue ?? 99999;
       return occupiedMonsters(foe)
@@ -99,6 +103,7 @@ function activateTargets(state: DuelState, player: PlayerState, card: CardInstan
         .map((m) => [m.uid]);
     }
     case "atkBuff":
+      if (def.monsterType === "xyz") return [[card.uid]];
       return occupiedMonsters(foe).map((m) => [m.uid]);
     case "returnToHand":
       return occupiedMonsters(player).map((m) => [m.uid]);
@@ -114,7 +119,7 @@ function activateTargets(state: DuelState, player: PlayerState, card: CardInstan
       return player.hand
         .filter((c) => {
           const d = getCardDef(c.defId);
-          return d.kind === "monster" && (d.level ?? 99) <= 4 && d.monsterType !== "fusion" && d.monsterType !== "synchro";
+          return d.kind === "monster" && (d.level ?? 99) <= 4 && !isExtraMonster(d.monsterType);
         })
         .map((c) => [c.uid]);
     case "equipBuff":
@@ -127,8 +132,14 @@ function activateTargets(state: DuelState, player: PlayerState, card: CardInstan
 function canActivateNow(state: DuelState, player: PlayerState, card: CardInstance, fromHand: boolean): boolean {
   const def = getCardDef(card.defId);
   if (def.resolve === "none" && def.spellType !== "field") return false;
-  if (def.id === "lux") {
-    return state.prompt.kind === "free" && isMainPhase(state) && state.turnPlayer === player.id && card.face === "up";
+  if (def.kind === "monster") {
+    if (fromHand || card.face !== "up") return false;
+    if (def.monsterType === "xyz") {
+      if ((def.detachCost ?? 0) > 0 && (card.overlays?.length ?? 0) < (def.detachCost ?? 0)) return false;
+    } else if (def.resolve !== "destroySpellTrap") {
+      return false;
+    }
+    return state.prompt.kind === "free" && isMainPhase(state) && state.turnPlayer === player.id && state.chain.length === 0;
   }
   if (def.kind === "trap") {
     if (fromHand) return false;
@@ -179,6 +190,7 @@ export function legalActions(state: DuelState): Action[] {
     actions.push(...summonActions(state, actor, "normalSummon"));
     actions.push(...summonActions(state, actor, "setMonster"));
     actions.push(...synchroOptions(actor));
+    actions.push(...xyzOptions(actor));
     for (const card of occupiedMonsters(actor)) {
       if (card.summonedThisTurn || card.attackedThisTurn || card.changedThisTurn) continue;
       actions.push({ type: "changePosition", uid: card.uid });
@@ -236,6 +248,7 @@ function needsTarget(card: CardInstance): boolean {
     "addFromGy",
     "specialSummonHand",
     "equipBuff",
+    "detachDestroy",
   ].includes(def.resolve);
 }
 

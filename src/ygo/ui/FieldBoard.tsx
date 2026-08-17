@@ -76,12 +76,14 @@ export function PileCounts({
   onAct?: (action: Action) => void;
 }) {
   const player = state.players[id];
-  const synchro = actions?.find((action) => action.type === "synchroSummon");
+  const extraAct =
+    actions?.find((action) => action.type === "xyzSummon") ??
+    actions?.find((action) => action.type === "synchroSummon");
   return (
     <p className="ygo-piles">
       卡组 {player.deck.length} ·{" "}
-      {synchro && onAct && id === 0 ? (
-        <button type="button" className="ygo-extra" onClick={() => onAct(synchro)}>
+      {extraAct && onAct && id === 0 ? (
+        <button type="button" className="ygo-extra" onClick={() => onAct(extraAct)}>
           额外 {player.extra.length}
         </button>
       ) : (

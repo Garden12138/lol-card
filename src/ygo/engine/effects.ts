@@ -1,6 +1,7 @@
 import { getCardDef } from "../data/cards";
 import {
   detachFromZone,
+  dumpOverlays,
   emptyZones,
   findOnField,
   log,
@@ -55,6 +56,7 @@ export function applyResolve(state: DuelState, link: ChainLink): void {
       const target = findOnField(state, link.targets[0] ?? "");
       if (target?.zone === "monster") {
         target.player.monsters[target.index] = null;
+        dumpOverlays(target.player, target.card);
         target.card.face = "up";
         target.player.hand.push(target.card);
         log(state, `${def.name}：回到手牌`);
@@ -119,8 +121,34 @@ export function applyResolve(state: DuelState, link: ChainLink): void {
       applyFusion(state, link);
       break;
     }
+    case "detachDestroy":
+    case "detachDamage": {
+      applyDetach(state, link);
+      break;
+    }
     default:
       break;
+  }
+}
+
+function applyDetach(state: DuelState, link: ChainLink): void {
+  const def = getCardDef(link.defId);
+  if (link.effect === "detachDamage") {
+    const foe = state.players[other(link.controller)];
+    const amount = def.resolveValue ?? 800;
+    foe.lp -= amount;
+    log(state, `${def.name}：卸 1，${amount} 伤害`);
+    return;
+  }
+  const target = findOnField(state, link.targets[0] ?? "");
+  if (target?.zone === "monster") {
+    if (target.card.protectedUntilEnd) {
+      log(state, "屏障保护了那只怪兽");
+      return;
+    }
+    target.player.monsters[target.index] = null;
+    sendToGy(target.player, target.card);
+    log(state, `${def.name}：卸 1，破坏 ${getCardDef(target.card.defId).name}`);
   }
 }
 

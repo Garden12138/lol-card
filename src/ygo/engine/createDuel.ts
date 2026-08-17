@@ -18,6 +18,7 @@ function makeCard(uid: string, defId: string, owner: PlayerId): CardInstance {
     changedThisTurn: false,
     atkBuff: 0,
     protectedUntilEnd: false,
+    overlays: [],
   };
 }
 

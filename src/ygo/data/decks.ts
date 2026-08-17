@@ -85,6 +85,42 @@ export const DECKS: readonly PreconDeck[] = [
     ],
     extra: ["ioniaDuet", "windMoon", "duskRebirth"],
   },
+  {
+    id: "noxus",
+    name: "诺克萨斯超量",
+    blurb: "两只 4 星叠放，卸素材破坏或打伤害。",
+    main: [
+      ...copies("draven", 2),
+      ...copies("katarina", 2),
+      ...copies("leblanc", 2),
+      ...copies("swain", 2),
+      ...copies("talon", 2),
+      ...copies("teleport", 2),
+      ...copies("ignite", 2),
+      ...copies("exhaust", 2),
+      ...copies("flash", 2),
+      ...copies("smite", 2),
+    ],
+    extra: ["noxusReign", "noxusBlades"],
+  },
+  {
+    id: "overlay",
+    name: "符文叠层",
+    blurb: "两只同星叠放，取除素材发动超量效果。",
+    main: [
+      ...copies("garen", 2),
+      ...copies("jax", 2),
+      ...copies("vi", 2),
+      ...copies("caitlyn", 2),
+      ...copies("zed", 2),
+      ...copies("ahri", 2),
+      ...copies("teleport", 2),
+      ...copies("smite", 2),
+      ...copies("exhaust", 2),
+      ...copies("zhonya", 2),
+    ],
+    extra: ["runeCannon", "noxianStack", "demaciaBanner"],
+  },
 ];
 
 export function getDeck(id: string): PreconDeck {
