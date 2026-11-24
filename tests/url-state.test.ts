@@ -41,7 +41,6 @@ describe("parseUrlState", () => {
       championId: "Lux",
       skinNum: 1,
       compareKeys: ["Ahri:2", "Lux:0"],
-      mode: "gallery",
     });
   });
 
@@ -109,7 +108,6 @@ describe("edition key helpers", () => {
       championId: "Lux",
       skinNum: 1,
       compareKeys: ["Ahri:0", "Lux:1", "Ahri:0"],
-      mode: "gallery",
     };
 
     const serialized = serializeUrlState(state);
@@ -120,40 +118,6 @@ describe("edition key helpers", () => {
       championId: "Lux",
       skinNum: 1,
       compareKeys: ["Ahri:0", "Lux:1"],
-      mode: "gallery",
     });
-  });
-
-  it("round-trips play mode", () => {
-    const serialized = serializeUrlState({
-      championId: "Ahri",
-      skinNum: 0,
-      compareKeys: [],
-      mode: "play",
-    });
-    expect(serialized).toContain("mode=play");
-    expect(parseUrlState(serialized, champions).mode).toBe("play");
-  });
-
-  it("round-trips ygo mode", () => {
-    const serialized = serializeUrlState({
-      championId: "Ahri",
-      skinNum: 0,
-      compareKeys: [],
-      mode: "ygo",
-    });
-    expect(serialized).toContain("mode=ygo");
-    expect(parseUrlState(serialized, champions).mode).toBe("ygo");
-  });
-
-  it("round-trips fight mode", () => {
-    const serialized = serializeUrlState({
-      championId: "Ahri",
-      skinNum: 0,
-      compareKeys: [],
-      mode: "fight",
-    });
-    expect(serialized).toContain("mode=fight");
-    expect(parseUrlState(serialized, champions).mode).toBe("fight");
   });
 });

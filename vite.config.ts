@@ -1,4 +1,4 @@
-import { defineConfig, type Plugin } from "vitest/config";
+import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
@@ -8,20 +8,9 @@ function githubPagesBase() {
   return repository ? `/${repository}/` : "/lol-card/";
 }
 
-function optionalLanPlugin(): Plugin {
-  return {
-    name: "rift-lan-loader",
-    async configureServer(server) {
-      if (process.env.RIFT_LAN !== "1") return;
-      const { startLanWsServer } = await import("./scripts/lan-plugin");
-      await startLanWsServer();
-    },
-  };
-}
-
 export default defineConfig({
   base: githubPagesBase(),
-  plugins: [react(), tailwindcss(), optionalLanPlugin()],
+  plugins: [react(), tailwindcss()],
   server: {
     port: 5175,
     proxy: {

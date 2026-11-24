@@ -45,7 +45,6 @@ export interface CardViewer3DProps {
   skin: SkinEdition;
   className?: string;
   fullscreen?: boolean;
-  variant?: "gallery" | "cast";
   onRequestFullscreen?: () => void;
   onExport?: (result: CardExportResult) => void;
   onExportError?: (error: Error) => void;
@@ -313,7 +312,6 @@ export function CardViewer3D({
   skin,
   className = '',
   fullscreen = false,
-  variant = 'gallery',
   onRequestFullscreen,
   onExport,
   onExportError,
@@ -959,11 +957,7 @@ export function CardViewer3D({
     >
       <div
         className={`relative w-full overflow-hidden rounded-2xl border border-[#d9bd7833] bg-[#05101a] shadow-[0_28px_90px_rgba(0,0,0,.46)] ${
-          fullscreen
-            ? 'h-[calc(100dvh-8.5rem)] min-h-[420px]'
-            : variant === 'cast'
-              ? 'h-[min(52vh,520px)] min-h-[280px]'
-              : 'h-[min(66vh,680px)] min-h-[430px]'
+          fullscreen ? 'h-[calc(100dvh-8.5rem)] min-h-[420px]' : 'h-[min(66vh,680px)] min-h-[430px]'
         } cursor-grab touch-none focus-visible:cursor-grabbing`}
         tabIndex={0}
         role="group"
@@ -1017,12 +1011,10 @@ export function CardViewer3D({
         <button type="button" className={controlClass} onClick={resetView} disabled={controlsDisabled}>
           重置视角
         </button>
-        {variant === 'gallery' && (
         <button type="button" className={controlClass} onClick={() => void handleExport()} disabled={controlsDisabled || isExporting}>
           {isExporting ? '正在导出…' : '下载 PNG'}
         </button>
-        )}
-        {variant === 'gallery' && onRequestFullscreen && (
+        {onRequestFullscreen && (
           <button
             type="button"
             className={`${controlClass} sm:ml-auto`}
